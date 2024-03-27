@@ -37,16 +37,18 @@ begin
   Result := '';
   case ACurrency of
     scGbp: Result := 'gbp';
-    scEuro: Result := 'eur';
+    scEur: Result := 'eur';
+    scUsd: Result := 'usd';
   end;
 end;
 
 function StringToCurrency(AValue: string): TpsCurrency;
 begin
-  Result := scUnknown;
+  Result := scGbp; // default
   AValue := Trim(AValue).ToLower;
   if AValue = 'gbp' then Result := scGbp;
-  if AValue = 'eur' then Result := scEuro;
+  if AValue = 'eur' then Result := scEur;
+  if AValue = 'usd' then Result := scUsd;
 
 end;
 

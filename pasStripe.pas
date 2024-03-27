@@ -13,7 +13,7 @@ type
 
   TpsCheckoutMode = (cmSetup, cmPayment, cmSubscription);
 
-  TpsCurrency = (scUnknown, scGbp, scEuro);
+  TpsCurrency = (scGbp, scEur, scUsd);
 
   TpsMetaDataRecord = class
     Name:  string;
@@ -181,6 +181,23 @@ type
     property Metadata: IpsMetadata read GetMetadata;
   end;
 
+  TpsListParamsDateFilter = record
+    LessThan: TDateTime;
+    LessThanOrEqual: TDateTime;
+    GreaterThanOrEqual: TDateTime;
+    GreaterThan: TDateTime;
+  end;
+
+  IpsBaseListParams = interface
+    ['{70003C24-F0B8-4A9E-A5C5-4300811E6A91}']
+    function GetLimit: integer;
+    procedure SetLimit(const Value: integer);
+
+    procedure PopulateParamStrings(AStrings: TStrings);
+
+    //property Limit: tps read GetLimit write SetLimit;
+  end;
+
   IpsChargeListOptions = interface
     ['{63EA59D8-289A-4C8D-BF1F-5D6AD738D005}']
     function GetFromDate: TDateTime;
@@ -251,6 +268,13 @@ type
     property MetaData: IpsMetaData read GetMetaData;
   end;
 
+  IpsInvoiceListOptions = interface
+    ['{A0985C12-6DAC-4831-80A0-CEE8AB45B89F}']
+    function GetCustomer: string;
+    procedure SetCustomer(const Value: string);
+    property Customer: string read GetCustomer write SetCustomer;
+  end;
+
   IpsInvoice = interface
     ['{1F6A3A85-DE3C-41EF-8426-10F898129867}']
     function GetJson: string;
@@ -285,30 +309,35 @@ type
 
   IPasStripe = interface
     ['{2E285C68-FBCB-4C38-96EA-13EAF8C6B7B1}']
-    function GetAccount: IpsAccount;
     function GetAccountID: string;
+    function GetAccount: IpsAccount;
+    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
+    function TestCredentials: Boolean;
     function GetLastError: string;
 
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
-
     function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
     function CreateCharge(AChargeParams: IpsChargeParams; var AError: string): IpsCharge;
     function UpdateCharge(AChargeID: string; ADescription: string): IpsCharge;
     function RefundCharge(AChargeID: string; var AError: string): Boolean;
 
-    function GetPaymentMethod(AID: string): IpsPaymentMethod;
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
     function CancelPaymentIntent(APaymentIntentID: string): string;
 
+    function GetSetupIntent(AID: string): IpsSetupIntent;
+    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+    function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
+
+
     function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
     function Getcustomer(AID: string): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
 
+    function GetPaymentMethod(AID: string): IpsPaymentMethod;
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
-
-    function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+    function GetPaymentMethods(ACustID: string): string;
 
 
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
@@ -319,13 +348,9 @@ type
 
     function GetLoginLink(AAccount: string): string;
 
-
-    function GetSetupIntent(AID: string): IpsSetupIntent;
-
-
-
     function GetInvoice(AID: string): IpsInvoice;
-    function TestCredentials: Boolean;
+    function GetInvoices(const AOptions: IpsInvoiceListOptions = nil): TpsInvoiceList;
+
     property AccountID: string read GetAccountID;
     property LastError: string read GetLastError;
   end;
@@ -440,5 +465,6 @@ class function TpsFactory.SetupIntent: IpsSetupIntent;
 begin
   Result := TpsSetupIntent.Create;
 end;
+
 
 end.

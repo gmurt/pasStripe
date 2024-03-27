@@ -22,11 +22,13 @@ type
     function GenerateSubscriptionCheckout(ACheckoutParams: IpsCheckoutParams): string;
 
   protected
+    function GetAccount: IpsAccount;
+    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
     function TestCredentials: Boolean;
     function CreateAccountSession(AAccount: string): string;
     function GetLoginLink(AAccount: string): string;
 
-    function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+    function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
 
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
 
@@ -34,15 +36,15 @@ type
     function Getcustomer(AID: string): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
 
-    function GetAccount: IpsAccount;
-    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
     function CancelPaymentIntent(APaymentIntentID: string): string;
 
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
     function GetPaymentMethod(AID: string): IpsPaymentMethod;
+    function GetPaymentMethods(ACustID: string): string;
 
+    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
     function GetSetupIntent(AID: string): IpsSetupIntent;
 
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
@@ -51,6 +53,7 @@ type
     function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
 
     function GetInvoice(AID: string): IpsInvoice;
+
 
     function RefundCharge(AChargeID: string; var AError: string): Boolean;
     function UpdateCharge(AChargeID: string; ADescription: string): IpsCharge;
@@ -82,36 +85,8 @@ const
 { TPasStripe }
 
 function TPasStripe.AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
-var
-  AParams: TStrings;
-  AStrCvc: string;
-  AData: string;
-  AJson: TJsonObject;
-
 begin
-  Result := TpsFactory.SetupIntent;
-
-  AStrCvc := ACvc.ToString;
-  while Length(AStrCvc) < 3 do
-    AStrCvc := '0' + AStrCvc;
-  AParams := TStringList.Create;
-  AJson := TJsonObject.Create;
-  try
-    AParams.Values['customer'] := ACustID;
-    AParams.Values['payment_method_data[type]'] := 'card';
-    AParams.Values['payment_method_data[card][number]'] := ANum;
-    AParams.Values['payment_method_data[card][exp_month]'] := AMonth.ToString;
-    AParams.Values['payment_method_data[card][exp_year]'] := AYear.ToString;
-    AParams.Values['payment_method_data[card][cvc]'] := AStrCvc;
-    AParams.Values['payment_method_options[card][moto]'] := 'true';
-    AParams.Values['confirm'] := 'true';
-    AData := Post('setup_intents', AParams);
-    AJson.FromJSON(AData);
-    Result.LoadFromJson(AJson);
-  finally
-    AParams.Free;
-    AJson.Free;
-  end;
+  Result := CreateSetupIntent(ACustID, ANum, AMonth, AYear, ACvc);
 end;
 
 function TPasStripe.AttachPaymentMethodToCustomer(ACustID, APaymentMethodID
@@ -458,6 +433,7 @@ begin
     AParams.Free;
   end;
 end;
+
 
 function TPasStripe.GetLastError: string;
 begin
@@ -821,6 +797,45 @@ begin
     AJson.Free;
   end;
 end;
+
+function TPasStripe.GetPaymentMethods(ACustID: string): string;
+begin
+  Result := Get('customers/'+ACustID+'/payment_methods', nil);
+end;
+
+function TPasStripe.CreateSetupIntent(ACustID, ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+var
+  AParams: TStrings;
+  AStrCvc: string;
+  AData: string;
+  AJson: TJsonObject;
+
+begin
+  Result := TpsFactory.SetupIntent;
+
+  AStrCvc := ACvc.ToString;
+  while Length(AStrCvc) < 3 do
+    AStrCvc := '0' + AStrCvc;
+  AParams := TStringList.Create;
+  AJson := TJsonObject.Create;
+  try
+    AParams.Values['customer'] := ACustID;
+    AParams.Values['payment_method_data[type]'] := 'card';
+    AParams.Values['payment_method_data[card][number]'] := ANum;
+    AParams.Values['payment_method_data[card][exp_month]'] := AMonth.ToString;
+    AParams.Values['payment_method_data[card][exp_year]'] := AYear.ToString;
+    AParams.Values['payment_method_data[card][cvc]'] := AStrCvc;
+    AParams.Values['payment_method_options[card][moto]'] := 'true';
+    AParams.Values['confirm'] := 'true';
+    AData := Post('setup_intents', AParams);
+    AJson.FromJSON(AData);
+    Result.LoadFromJson(AJson);
+  finally
+    AParams.Free;
+    AJson.Free;
+  end;
+end;
+
 
 function TPasStripe.GetSetupIntent(AID: string): IpsSetupIntent;
 var
