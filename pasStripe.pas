@@ -13,7 +13,7 @@ type
 
   TpsCheckoutMode = (cmSetup, cmPayment, cmSubscription);
 
-  TpsCurrency = (scGbp, scEur, scUsd);
+  TpsCurrency = (scUnknown, scGbp, scEur, scUsd);
 
   TpsMetaDataRecord = class
     Name:  string;
@@ -43,6 +43,7 @@ type
     function GetPaid: Boolean;
     function GetMetaData(AName: string): string;
     function GetClientSecret: string;
+    function GetPaymentMethod: string;
     procedure LoadFromJson(AJson: TJsonObject);
     property MetaData[AName: string]: string read GetMetaData;
     property id: string read GetId;
@@ -51,15 +52,17 @@ type
     property ApplicationFeeAmount: integer read GetApplicationFee;
     property Created: TDateTime read GetCreated;
     property ClientSecret: string read GetClientSecret;
-
+    property PaymentMethod: string read GetPaymentMethod;
   end;
 
   IpsSetupIntent = interface
     ['{A6B0F997-03DC-43EB-A698-97FBEE4E701D}']
     function GetID: string;
+    function GetClientSecret: string;
     function GetPaymentMethod: string;
     procedure LoadFromJson(AJson: TJsonObject);
     property ID: string read GetID;
+    property ClientSecret: string read GetClientSecret;
     property PaymentMethod: string read GetPaymentMethod;
   end;
 
@@ -327,7 +330,9 @@ type
     function CancelPaymentIntent(APaymentIntentID: string): string;
 
     function GetSetupIntent(AID: string): IpsSetupIntent;
-    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+    function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
+
+    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
     function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
 
 
@@ -341,7 +346,7 @@ type
 
 
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
-    function GenerateCheckoutSession(AOptions: IpsCheckoutParams): IpsCheckoutSession;
+    function GenerateCheckoutSession(AParams: IpsCheckoutParams): IpsCheckoutSession;
 
     function GenerateSubscriptionCheckout(AParams: IpsCheckoutParams): string;
 
@@ -349,7 +354,7 @@ type
     function GetLoginLink(AAccount: string): string;
 
     function GetInvoice(AID: string): IpsInvoice;
-    function GetInvoices(const AOptions: IpsInvoiceListOptions = nil): TpsInvoiceList;
+
 
     property AccountID: string read GetAccountID;
     property LastError: string read GetLastError;

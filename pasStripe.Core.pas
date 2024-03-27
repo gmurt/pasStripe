@@ -44,7 +44,8 @@ type
     function GetPaymentMethod(AID: string): IpsPaymentMethod;
     function GetPaymentMethods(ACustID: string): string;
 
-    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
+    function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
+    function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
     function GetSetupIntent(AID: string): IpsSetupIntent;
 
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
@@ -803,6 +804,27 @@ begin
   Result := Get('customers/'+ACustID+'/payment_methods', nil);
 end;
 
+function TPasStripe.CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent;
+var
+  AParams: TStrings;
+  AJson: TJsonObject;
+  AData: string;
+begin
+  Result := TpsFactory.SetupIntent;
+  AParams := TStringList.Create;
+  AJson := TJsonObject.Create;
+  try
+    if ACustID <> '' then AParams.Values['customer'] := ACustID;
+    AParams.Values['confirm'] := 'true';
+    AData := Post('setup_intents', AParams);
+    AJson.FromJSON(AData);
+    Result.LoadFromJson(AJson);
+  finally
+    AParams.Free;
+    AJson.Free;
+  end;
+end;
+
 function TPasStripe.CreateSetupIntent(ACustID, ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent;
 var
   AParams: TStrings;
@@ -819,7 +841,7 @@ begin
   AParams := TStringList.Create;
   AJson := TJsonObject.Create;
   try
-    AParams.Values['customer'] := ACustID;
+    if ACustID <> '' then AParams.Values['customer'] := ACustID;
     AParams.Values['payment_method_data[type]'] := 'card';
     AParams.Values['payment_method_data[card][number]'] := ANum;
     AParams.Values['payment_method_data[card][exp_month]'] := AMonth.ToString;
