@@ -24,7 +24,8 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: string); overload;
+    procedure LoadFromJson(AJson: TJsonObject); overload;
   end;
 
   TpsSetupIntent = class(TInterfacedObject, IpsSetupIntent)
@@ -36,7 +37,8 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: string); overload;
+    procedure LoadFromJson(AJson: TJsonObject); overload;
   end;
 
 implementation
@@ -98,6 +100,19 @@ begin
   Result := FPaymentMethod;
 end;
 
+procedure TpsPaymentIntent.LoadFromJson(AJson: string);
+var
+  AJsonObj: TJsonObject;
+begin
+  AJsonObj := TJsonObject.Create;
+  try
+    AJsonObj.FromJSON(AJson);
+    LoadFromJson(AJsonObj);
+  finally
+    AJsonObj.Free;
+  end;
+end;
+
 procedure TpsPaymentIntent.LoadFromJson(AJson: TJsonObject);
 begin
   Fid := AJson.S['id'];
@@ -131,11 +146,24 @@ begin
   Result := FPaymentMethod;
 end;
 
+procedure TpsSetupIntent.LoadFromJson(AJson: string);
+var
+  AJsonObj: TJsonObject;
+begin
+  AJsonObj := TJsonObject.Create;
+  try
+    AJsonObj.FromJSON(AJson);
+    LoadFromJson(AJsonObj);
+  finally
+    AJsonObj.Free;
+  end;
+end;
+
 procedure TpsSetupIntent.LoadFromJson(AJson: TJsonObject);
 begin
   FID := AJson.S['id'];
   if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S['payment_method'];
-  if not AJson.IsNull('client_secret') then FPaymentMethod := AJson.S['client_secret'];
+  if not AJson.IsNull('client_secret') then FClientSecret := AJson.S['client_secret'];
 end;
 
 

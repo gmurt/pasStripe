@@ -44,7 +44,9 @@ type
     function GetMetaData(AName: string): string;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
-    procedure LoadFromJson(AJson: TJsonObject);
+
+    procedure LoadFromJson(AJson: string); overload;
+    procedure LoadFromJson(AJson: TJsonObject); overload;
     property MetaData[AName: string]: string read GetMetaData;
     property id: string read GetId;
     property Amount: integer read GetAmount;
@@ -60,7 +62,8 @@ type
     function GetID: string;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: string); overload;
+    procedure LoadFromJson(AJson: TJsonObject); overload;
     property ID: string read GetID;
     property ClientSecret: string read GetClientSecret;
     property PaymentMethod: string read GetPaymentMethod;
@@ -327,11 +330,12 @@ type
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
-    function CancelPaymentIntent(APaymentIntentID: string): string;
+    function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
+    function CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
 
-    function GetSetupIntent(AID: string): IpsSetupIntent;
+
+    function GetSetupIntent(ASetupIntentID: string): IpsSetupIntent;
     function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
-
     function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
     function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
 

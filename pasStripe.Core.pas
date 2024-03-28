@@ -38,7 +38,7 @@ type
 
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
-    function CancelPaymentIntent(APaymentIntentID: string): string;
+    function CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
 
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
     function GetPaymentMethod(AID: string): IpsPaymentMethod;
@@ -46,7 +46,8 @@ type
 
     function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
     function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
-    function GetSetupIntent(AID: string): IpsSetupIntent;
+    function GetSetupIntent(ASetupIntentID: string): IpsSetupIntent;
+    function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
 
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
     function CreateCharge(AChargeParams: IpsChargeParams; var AError: string): IpsCharge;
@@ -105,13 +106,17 @@ begin
 
 end;
 
-function TPasStripe.CancelPaymentIntent(APaymentIntentID: string): string;
+function TPasStripe.CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
 var
   AParams: TStrings;
+  AData: string;
 begin
+  Result := TpsFactory.PaymentIntent;
   AParams := TStringList.Create;
   try
-    Result := Post('payment_intents/'+APaymentIntentID+'/cancel', AParams);
+    AData := Post('payment_intents/'+APaymentIntentID+'/cancel', AParams);
+    if FLastError = '' then
+      Result.LoadFromJson(AData);
   finally
     AParams.Free;
   end;
@@ -196,8 +201,10 @@ function TPasStripe.HttpAction(AVerb: THttpVerb; AMethod: string;
 var
   AUrl: string;
   AHttp: THTTPClient;
+  APostParams: TStrings;
 begin
   AHttp := THTTPClient.Create;
+  APostParams := TStringList.Create;
   try
     AUrl := 'https://api.stripe.com/v1/' + AMethod;
     if AParams <> nil then
@@ -212,20 +219,20 @@ begin
       AHttp.CustomHeaders['Stripe-Account'] := FAccount;
 
     if AMethod.ToLower = 'account_sessions' then
-      AHttp.CustomHeaders['Stripe-Version'] :=
-        '2022-08-01; embedded_connect_beta=v1';
+      AHttp.CustomHeaders['Stripe-Version'] := '2022-08-01; embedded_connect_beta=v1';
+
+    if Assigned(AParams) then APostParams.Assign(AParams);
+
 
     case AVerb of
-      httpGet:
-        Result := AHttp.Get(AUrl);
-      httpPost:
-        Result := AHttp.Post(AUrl, AParams);
-      httpDelete:
-        Result := AHttp.Delete(AUrl);
+      httpGet: Result := AHttp.Get(AUrl);
+      httpPost: Result := AHttp.Post(AUrl, APostParams);
+      httpDelete: Result := AHttp.Delete(AUrl);
     end;
 
   finally
     AHttp.Free;
+    APostParams.Free;
   end;
 end;
 
@@ -815,7 +822,7 @@ begin
   AJson := TJsonObject.Create;
   try
     if ACustID <> '' then AParams.Values['customer'] := ACustID;
-    AParams.Values['confirm'] := 'true';
+    //AParams.Values['confirm'] := 'true';
     AData := Post('setup_intents', AParams);
     AJson.FromJSON(AData);
     Result.LoadFromJson(AJson);
@@ -859,23 +866,24 @@ begin
 end;
 
 
-function TPasStripe.GetSetupIntent(AID: string): IpsSetupIntent;
+function TPasStripe.GetSetupIntent(ASetupIntentID: string): IpsSetupIntent;
 var
   AData: string;
-  AJson: TJsonObject;
 begin
   Result := TpsFactory.SetupIntent;
-  AData := Get('setup_intents/' + AID, nil);
-  AJson := TJsonObject.Create;
-  try
-    AJson.FromJSON(AData);
-    if not AJson.Contains('error') then
-      Result.LoadFromJson(AJson);
-  finally
-    AJson.Free;
-  end;
+  AData := Get('setup_intents/' + ASetupIntentID, nil);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
 end;
 
-
+function TpasStripe.ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
+var
+  AData: string;
+begin
+  Result := TpsFactory.SetupIntent;
+  AData := Post('setup_intents/' + ASetupIntentID + '/confirm', nil);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
+end;
 
 end.
