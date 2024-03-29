@@ -95,7 +95,7 @@ type
 
 implementation
 
-uses SysUtils, DateUtils;
+uses SysUtils, DateUtils, pasStripe.Constants;
 
 { TpsCheckoutSession }
 
@@ -170,13 +170,13 @@ begin
   AJson := TJsonObject.Create;  //Parse(AData) as TJsonObject;
   try
     AJson.FromJSON(AData);
-    FID := AJson.S['id'];
-    FCreated := UnixToDateTime(StrToInt(AJson.S['created']));
-    if not AJson.IsNull('url') then FUrl := AJson.S['url'];
-    if AJson.Types['payment_intent'] = jvtString then FPaymentIntentID := AJson.S['payment_intent'];
-    if AJson.Types['setup_intent'] = jvtString then FSetupIntentID := AJson.S['setup_intent'];
-    FStatus := AJson.S['status'];
-    FPaymentStatus := AJson.S['payment_status'];
+    FID := AJson.S[id];
+    FCreated := UnixToDateTime(StrToInt(AJson.S[created]));
+    if not AJson.IsNull('url') then FUrl := AJson.S[url];
+    if AJson.Types['payment_intent'] = jvtString then FPaymentIntentID := AJson.S[payment_intent];
+    if AJson.Types['setup_intent'] = jvtString then FSetupIntentID := AJson.S[setup_intent];
+    FStatus := AJson.S[status];
+    FPaymentStatus := AJson.S[payment_status];
     FMetadata.LoadFromJson(AJson.O['metadata']);
     FJson := AData;
   finally

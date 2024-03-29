@@ -26,7 +26,7 @@ type
 
 implementation
 
-uses pasStripe.Json;
+uses pasStripe.Json, pasStripe.Constants;
 
 { TpsAccount }
 
@@ -43,10 +43,10 @@ begin
   AObj := TJsonObject.Create;
   try
     AObj.FromJSON(AJson);
-    Fid := AObj.S['id'];
-    Fcharges_enabled := AObj.B['charges_enabled'];
+    Fid := AObj.S[id];
+    Fcharges_enabled := AObj.B[charges_enabled];
     if not AObj.O['business_profile'].IsNull('name') then
-      Fname := AObj.O['business_profile'].S['name'];
+      Fname := AObj.O['business_profile'].S[name];
 
     FMetaData.LoadFromJson(AObj.O['metadata'] );
   finally

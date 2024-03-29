@@ -2,7 +2,7 @@ unit pasStripe.Json;
 
 interface
 
-uses System.Json;
+uses System.Json, pasStripe, pasStripe.Constants;
 
 type
   TJsonObject = System.Json.TJSONObject;
@@ -12,18 +12,18 @@ type
 
   TJsonHelper = class helper for TJsonObject
   private
-    function GetBool(AName: string): Boolean;
-    procedure SetBool(AName: string; const Value: Boolean);
-    function GetString(AName: string): string;
-    procedure SetString(AName: string; const Value: string);
+    function GetBool(AParam: TpsParamName): Boolean;
+    procedure SetBool(AParam: TpsParamName; const Value: Boolean);
+    function GetString(AParam: TpsParamName): string;
+    procedure SetString(AParam: TpsParamName; const Value: string);
     function GetObject(AName: string): TJsonObject;
     procedure SetObject(AName: string; const Value: TJsonObject);
     function GetArray(AName: string): TJSONArray;
     procedure SetArray(AName: string; const Value: TJSONArray);
     function GetNames(AIndex: integer): string;
     function GetTypes(AName: string): TJsonValueType;
-    function GetInteger(AName: string): integer;
-    procedure SetInteger(AName: string; const Value: integer);
+    function GetInteger(AParam: TpsParamName): integer;
+    procedure SetInteger(AParam: TpsParamName; const Value: integer);
 
   public
     function Contains(AName: string): Boolean;
@@ -33,16 +33,16 @@ type
 
     property Types[AName: string]: TJsonValueType read GetTypes;
     property Names[AIndex: integer]: string read GetNames;
-    property B[AName: string]: Boolean read GetBool write SetBool;
-    property S[AName: string]: string read GetString write SetString;
-    property I[AName: string]: Integer read GetInteger write SetInteger;
+    property B[AParam: TpsParamName]: Boolean read GetBool write SetBool;
+    property S[AParam: TpsParamName]: string read GetString write SetString;
+    property I[AParam: TpsParamName]: Integer read GetInteger write SetInteger;
     property O[AName: string]: TJsonObject read GetObject write SetObject;
     property A[AName: string]: TJSONArray read GetArray write SetArray;
   end;
 
 implementation
 
-uses SysUtils, System.Generics.Collections;
+uses SysUtils, System.Generics.Collections, pasStripe.Utils;
 
 { TJsonHelper }
 
@@ -71,21 +71,21 @@ begin
   end;
 end;
 
-function TJsonHelper.GetBool(AName: string): Boolean;
+function TJsonHelper.GetBool(AParam: TpsParamName): Boolean;
 var
   AValue: TJSONValue;
 begin
   Result := False;
-  AValue := FindValue(AName);
+  AValue := FindValue(ParamToString(AParam));
   if AValue <> nil then
     Result := AValue.AsType<Boolean> = True;
 
 
 end;
 
-function TJsonHelper.GetInteger(AName: string): integer;
+function TJsonHelper.GetInteger(AParam: TpsParamName): integer;
 begin
-  Result := StrToIntDef(GetString(AName), 0);
+  Result := StrToIntDef(GetString(AParam), 0);
 end;
 
 function TJsonHelper.GetNames(AIndex: integer): string;
@@ -103,12 +103,12 @@ begin
   end;
 end;
 
-function TJsonHelper.GetString(AName: string): string;
+function TJsonHelper.GetString(AParam: TpsParamName): string;
 var
   AValue: TJSONValue;
 begin
   Result := '';
-  AValue := FindValue(AName);
+  AValue := FindValue(ParamToString(AParam));
   if AValue <> nil then
     Result := AValue.AsType<string>;
 
@@ -126,14 +126,14 @@ begin
   AddPair(AName, Value);
 end;
 
-procedure TJsonHelper.SetBool(AName: string; const Value: Boolean);
+procedure TJsonHelper.SetBool(AParam: TpsParamName; const Value: Boolean);
 begin
-  AddPair(AName, TJSONBool.Create(Value));
+  AddPair(ParamToString(AParam), TJSONBool.Create(Value));
 end;
 
-procedure TJsonHelper.SetInteger(AName: string; const Value: integer);
+procedure TJsonHelper.SetInteger(AParam: TpsParamName; const Value: integer);
 begin
-  AddPair(ANAme, TJSONNumber.Create(Value));
+  AddPair(ParamToString(AParam), TJSONNumber.Create(Value));
 end;
 
 procedure TJsonHelper.SetObject(AName: string; const Value: TJsonObject);
@@ -141,9 +141,9 @@ begin
   AddPair(AName, Value)
 end;
 
-procedure TJsonHelper.SetString(AName: string; const Value: string);
+procedure TJsonHelper.SetString(AParam: TpsParamName; const Value: string);
 begin
-  AddPair(AName, TJSONString.Create(Value));
+  AddPair(ParamToString(AParam), TJSONString.Create(Value));
 end;
 
 function TJsonHelper.GetTypes(AName: string): TJsonValueType;

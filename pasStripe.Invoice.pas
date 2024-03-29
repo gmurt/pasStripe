@@ -21,7 +21,7 @@ type
 
 implementation
 
-
+uses pasStripe.Constants;
 
 { TpsInvoice }
 
@@ -56,8 +56,8 @@ end;
 procedure TpsInvoice.LoadFromJson(AJson: TJsonObject);
 begin
   FJson := AJson.ToJSON;
-  FID := AJson.S['id'];
-  FPdfUrl := AJson.S['invoice_pdf'];
+  FID := AJson.S[id];
+  FPdfUrl := AJson.S[invoice_pdf];
 end;
 
 end.

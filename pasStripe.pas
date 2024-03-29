@@ -2,16 +2,22 @@ unit pasStripe;
 
 interface
 
-uses Classes, SysUtils, System.Json, System.Generics.Collections;
+uses Classes, SysUtils, System.Json, System.Generics.Collections, pasStripe.Constants;
 
 type
   TpsPaymentMethodType = (pmDirectDebit, pmCard);
   TpsPaymentMethodsTypes = set of TpsPaymentMethodType;
   TpsCheckoutMode = (cmSetup, cmPayment, cmSubscription);
-  TpsRecurring = (rDaily, rWeekly, rMonthly, rYearly);
+  TpsRecurring = (None, Daily, Weekly, Monthly, Yearly);
   TpsCurrency = (scUnknown, scGbp, scEur, scUsd);
-  TpsParamName = (amount, application_fee_amount, customer, currency, description, email, mode, name, priceId,
-                  successUrl, taxId, cancelUrl);
+  TpsFutureUsage = (fuOnSession, fuOffSession);
+
+  TpsParamName = (id, amount, amount_received, amount_refunded, application_fee_amount, brand, cancel_url, charge, charges_enabled,
+                  client_secret, confirm, created, customer,customer_email, currency, deleted, description, email, exp_month, exp_year,
+                  has_more, invoice_pdf, last4, &message, mode, name, payment_intent, payment_method, payment_status, price_id,
+                  reason, setup_intent,
+                  status, success_url, url);
+
   TpsParamNames = set of TpsParamName;
 
   TpsMetaDataRecord = class
@@ -39,9 +45,11 @@ type
   protected
     function GetInteger(AParam: TpsParamName): integer;
     function GetString(AParam: TpsParamName): string;
+    function GetBoolean(AParam: TpsParamName): Boolean;
     function GetMetaData(AName: string): string;
     procedure SetString(AParam: TpsParamName; const AValue: string);
     procedure SetInteger(AParam: TpsParamName; const AValue: integer);
+    procedure SetBoolean(AParam: TpsParamName; const AValue: Boolean);
     procedure SetMetaData(AName, AValue: string);
   public
     constructor Create; virtual;
@@ -59,30 +67,68 @@ type
   public
     property Amount: integer index Ord(amount) read GetInteger write SetInteger;
     property ApplicationFeeAmount: integer index(application_fee_amount) read GetInteger write SetInteger;
+    property Confirm: boolean index(confirm) read GetBoolean write SetBoolean;
     property Currency: string index Ord(currency) read GetString write SetString;
     property Customer: string index Ord(customer) read GetString write SetString;
     property Description: string index Ord(description) read GetString write SetString;
+    property PaymentMethod: string index Ord(payment_method) read GetString write SetString;
   end;
+
+  TpsRefundParams = class(TpsBaseParams)
+  public
+    property Amount: integer index Ord(amount) read GetInteger write SetInteger;
+    property Charge: string index Ord(charge) read GetString write SetString;
+    property PaymentIntent: string index Ord(payment_intent) read GetString write SetString;
+    property Reason: string index Ord(reason) read GetString write SetString;
+  end;
+
+  TpsCreatePaymentIntentParams = class(TpsBaseParams)
+  private
+    FPaymentMethodTypes: TpsPaymentMethodsTypes;
+    FFutureUsage: TpsFutureUsage;
+  public
+    procedure PopulateStrings(AStrings: TStrings); override;
+    property Description: string index Ord(description) read GetString write SetString;
+    property Amount: integer index Ord(amount) read GetInteger write SetInteger;
+    property ApplicationFeeAmount: integer index(application_fee_amount) read GetInteger write SetInteger;
+    property Currency: string index Ord(currency) read GetString write SetString;
+    property PaymentMethods: TpsPaymentMethodsTypes read FPaymentMethodTypes write FPaymentMethodTypes;
+    property FutureUsage: TpsFutureUsage read FFutureUsage write FFutureUsage;
+  end;
+
 
   TpsUpdateCustomerParams = class(TpsBaseParams)
   public
     property Name: string index Ord(name) read GetString write SetString;
+    property Email: string index Ord(email) read GetString write SetString;
     property Description: string index Ord(description) read GetString write SetString;
+  end;
+
+  TpsCreateCustomerParams = class(TpsUpdateCustomerParams)
+  public
+    property Name: string index Ord(name) read GetString write SetString;
+    property Description: string index Ord(description) read GetString write SetString;
+    property Email: string index Ord(email) read GetString write SetString;
   end;
 
   TpsCheckoutLineItem = class
     FCurrency: TpsCurrency;
     FDescription: string;
-    FAMount: integer;
+    FPriceID: string;
+    FAmount: integer;
     FQty: integer;
     FTaxID: string;
     FRecurring: TpsRecurring;
   end;
 
   TpsCheckoutLineItemList = class(TObjectList<TpsCheckoutLineItem>)
+  private
+    FCurrency: TpsCurrency;
   public
+    constructor Create(ACurrency: TpsCurrency); virtual;
     procedure PopulateStrings(AStrings: TStrings);
-    procedure AddLineItem(ADesc: string; ACurrency: TpsCurrency; AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
+    procedure AddLineItem(ADesc: string; AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring); overload;
+    procedure AddLineItem(APriceID: string; AQty: integer; ATaxID: string; ARecurring: TpsRecurring); overload;
   end;
 
   TpsCreateCheckoutParams = class(TpsBaseParams)
@@ -94,20 +140,17 @@ type
     function GetCurrency: TpsCurrency;
     procedure SetCurrency(const Value: TpsCurrency);
   public
-    constructor Create; override;
+    constructor Create(ACurrency: TpsCurrency); reintroduce;
     destructor Destroy; override;
     procedure PopulateStrings(AStrings: TStrings); override;
     property ApplicationFeeAmount: integer index Ord(application_fee_amount) read GetInteger write SetInteger;
-    property Email: string index Ord(email) read GetString write SetString;
-    property Description: string index Ord(description) read GetString write SetString;
-    property Name: string index Ord(name) read GetString write SetString;
+    property CustomerEmail: string index Ord(customer_email) read GetString write SetString;
     property Mode: TpsCheckoutMode read GetMode write SetMode;
     property Currency: TpsCurrency read GetCurrency write SetCurrency;
     property PaymentMethods: TpsPaymentMethodsTypes read FPaymentMethodTypes write FPaymentMethodTypes;
-    property PriceID: string index Ord(priceId) read GetString write SetString;
-    property SuccessUrl: string index Ord(successUrl) read GetString write SetString;
-    property CancelUrl: string index Ord(cancelUrl) read GetString write SetString;
-    property TaxID: string index Ord(taxId) read GetString write SetString;
+    property PriceID: string index Ord(price_id) read GetString write SetString;
+    property SuccessUrl: string index Ord(success_url) read GetString write SetString;
+    property CancelUrl: string index Ord(cancel_url) read GetString write SetString;
     property LineItems: TpsCheckoutLineItemList read FLineItems;
   end;
 
@@ -118,13 +161,13 @@ type
     function GetCreated: TDateTime;
     function GetId: string;
     function GetPaid: Boolean;
-    function GetMetaData(AName: string): string;
+    function GetMetaData: IpsMetadata;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
 
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TJsonObject); overload;
-    property MetaData[AName: string]: string read GetMetaData;
+    property MetaData: IpsMetadata read GetMetaData;
     property id: string read GetId;
     property Amount: integer read GetAmount;
     property Paid: Boolean read GetPaid;
@@ -316,6 +359,7 @@ type
     property MetaData: IpsMetaData read GetMetaData;
   end;
 
+
   IPasStripe = interface
     ['{2E285C68-FBCB-4C38-96EA-13EAF8C6B7B1}']
     function GetAccountID: string;
@@ -330,7 +374,7 @@ type
 
     function CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
     function UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
-    function RefundCharge(AChargeID: string; var AError: string): Boolean;
+    function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
 
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
@@ -392,8 +436,12 @@ type
     class function CreateChargeParams(AAmount: integer; ACurrency: string): TpsCreateChargeParams;
     class function UpdateChargeParams: TpsUpdateChargeParams;
 
+    class function CreateCustomerParams: TpsCreateCustomerParams;
     class function UpdateCustomerParams: TpsUpdateCustomerParams;
 
+    class function CreatePaymentIntentParams: TpsCreatePaymentIntentParams;
+
+    class function CreateRefundParams: TpsRefundParams;
   end;
 
 
@@ -426,6 +474,11 @@ begin
   inherited;
 end;
 
+function TpsBaseParams.GetBoolean(AParam: TpsParamName): Boolean;
+begin
+  Result := FParams.Values[ParamToString(AParam)].ToLower = 'true';
+end;
+
 function TpsBaseParams.GetInteger(AParam: TpsParamName): integer;
 begin
   Result := StrToIntDef(GetString(AParam), 0);
@@ -444,6 +497,14 @@ end;
 procedure TpsBaseParams.PopulateStrings(AStrings: TStrings);
 begin
   AStrings.Assign(FParams);
+end;
+
+procedure TpsBaseParams.SetBoolean(AParam: TpsParamName; const AValue: Boolean);
+begin
+  case AValue of
+    True: FParams.Values[ParamToString(AParam)] := 'true';
+    false: FParams.Values[ParamToString(AParam)] := 'false';
+  end;
 end;
 
 procedure TpsBaseParams.SetInteger(AParam: TpsParamName; const AValue: integer);
@@ -489,9 +550,24 @@ end;
 
 class function TpsFactory.CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): TpsCreateCheckoutParams;
 begin
-  Result := TpsCreateCheckoutParams.Create;
+  Result := TpsCreateCheckoutParams.Create(ACurrency);
   Result.Mode := AMode;
   Result.Currency := ACurrency;
+end;
+
+class function TpsFactory.CreateCustomerParams: TpsCreateCustomerParams;
+begin
+  Result := TpsCreateCustomerParams.Create;
+end;
+
+class function TpsFactory.CreatePaymentIntentParams: TpsCreatePaymentIntentParams;
+begin
+  Result := TpsCreatePaymentIntentParams.Create;
+end;
+
+class function TpsFactory.CreateRefundParams: TpsRefundParams;
+begin
+  Result := TpsRefundParams.Create;
 end;
 
 class function TpsFactory.UpdateChargeParams: TpsUpdateChargeParams;
@@ -554,10 +630,10 @@ end;
 
 { TpsCreateCheckoutParams }
 
-constructor TpsCreateCheckoutParams.Create;
+constructor TpsCreateCheckoutParams.Create(ACurrency: TpsCurrency);
 begin
   inherited Create;
-  FLineItems := TpsCheckoutLineItemList.Create(True);
+  FLineItems := TpsCheckoutLineItemList.Create(ACurrency);
 end;
 
 destructor TpsCreateCheckoutParams.Destroy;
@@ -578,18 +654,9 @@ end;
 
 
 procedure TpsCreateCheckoutParams.PopulateStrings(AStrings: TStrings);
-var
-  APaymentMethod: TpsPaymentMethodType;
-  AIndex: integer;
 begin
   inherited;
-  AIndex := 0;
-  for APaymentMethod in FPaymentMethodTypes do
-  begin
-    if APaymentMethod = pmDirectDebit then AStrings.Values['payment_method_types[' + AIndex.ToString + ']'] :='bacs_debit';
-    if APaymentMethod = pmCard then AStrings.Values['payment_method_types[' + AIndex.ToString + ']'] := 'card';
-    Inc(AIndex);
-  end;
+  PaymentMethodsToStrings(FPaymentMethodTypes, AStrings);
   FLineItems.PopulateStrings(AStrings);
 end;
 
@@ -606,18 +673,37 @@ end;
 
 { TpsCheckoutLineItemList }
 
-procedure TpsCheckoutLineItemList.AddLineItem(ADesc: string; ACurrency: TpsCurrency; AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
+procedure TpsCheckoutLineItemList.AddLineItem(ADesc: string;  AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
 var
   AItem: TpsCheckoutLineItem;
 begin
   AItem := TpsCheckoutLineItem.Create;
-  AItem.FCurrency := ACurrency;
+  AItem.FCurrency := FCurrency;
   AItem.FDescription := ADesc;
   AItem.FAMount := AAmount;
   AItem.FQty := AQty;
   AItem.FTaxID := ATaxID;
   AItem.FRecurring := ARecurring;
   Add(AItem);
+end;
+
+procedure TpsCheckoutLineItemList.AddLineItem(APriceID: string; AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
+var
+  AItem: TpsCheckoutLineItem;
+begin
+  AItem := TpsCheckoutLineItem.Create;
+  AItem.FCurrency := FCurrency;
+  AItem.FPriceID := APriceID;;
+  AItem.FQty := AQty;
+  AItem.FTaxID := ATaxID;
+  AItem.FRecurring := ARecurring;
+  Add(AItem);
+end;
+
+constructor TpsCheckoutLineItemList.Create(ACurrency: TpsCurrency);
+begin
+  inherited Create(True);
+  FCurrency := ACurrency;
 end;
 
 procedure TpsCheckoutLineItemList.PopulateStrings(AStrings: TStrings);
@@ -628,13 +714,44 @@ begin
   for ICount := 0 to Count-1 do
   begin
     AItem := Items[ICount];
-    AStrings.Values['line_items['+ICount.ToString+'][price_data][currency]'] := CurrencyToString(AItem.FCurrency);
-    AStrings.Values['line_items['+ICount.ToString+'][price_data][product_data][name]'] := AItem.FDescription;
-    AStrings.Values['line_items['+ICount.ToString+'][price_data][unit_amount]'] := AItem.FAMount.ToString;
-    AStrings.Values['line_items['+ICount.ToString+'][price_data][recurring][interval]'] := IntervalToString(AItem.FRecurring);
+
+    if AItem.FPriceID <> '' then
+    begin
+      AStrings.Values['line_items['+ICount.ToString+'][price]'] := AItem.FPriceID;
+    end
+    else
+    begin
+      AStrings.Values['line_items['+ICount.ToString+'][price_data][unit_amount]'] := AItem.FAmount.ToString;
+      AStrings.Values['line_items['+ICount.ToString+'][price_data][product_data][name]'] := AItem.FDescription;
+      AStrings.Values['line_items['+ICount.ToString+'][price_data][currency]'] := CurrencyToString(AItem.FCurrency);
+      if AItem.FRecurring <> None then
+        AStrings.Values['line_items['+ICount.ToString+'][price_data][recurring][interval]'] := IntervalToString(AItem.FRecurring);
+    end;
     AStrings.Values['line_items['+ICount.ToString+'][quantity]'] := AItem.FQty.ToString;
     AStrings.Values['line_items['+ICount.ToString+'][tax_rates][]'] := AItem.FTaxID;
+
+
   end;
 end;
+
+{ TpsCreatePaymentIntentParams }
+
+procedure TpsCreatePaymentIntentParams.PopulateStrings(AStrings: TStrings);
+begin
+  inherited;
+  PaymentMethodsToStrings(FPaymentMethodTypes, AStrings);
+  case FFutureUsage of
+    fuOnSession:  AStrings.Values['setup_future_usage'] := 'on_session';
+    fuOffSession: AStrings.Values['setup_future_usage'] := 'off_session';
+  end;
+end;
+
+var
+  p: TpsParamName;
+
+initialization
+
+  for p := Low(TpsParamName) to High(TpsParamName) do
+    ParamToString(p);
 
 end.

@@ -2,10 +2,11 @@ unit pasStripe.Utils;
 
 interface
 
-uses pasStripe;
+uses Classes, pasStripe, pasStripe.Constants;
 
 function ParamToString(AParam: TpsParamName): string;
 function PaymentMethodToString(APaymentMethod: TpsPaymentMethodType): string;
+procedure PaymentMethodsToStrings(APaymentMethods: TpsPaymentMethodsTypes; AStrings: TStrings);
 function CheckoutModeToString(ACheckoutMode: TpsCheckoutMode): string;
 function IntervalToString(AInterval: TpsRecurring): string;
 
@@ -20,18 +21,7 @@ uses SysUtils, RTTI;
 
 function ParamToString(AParam: TpsParamName): string;
 begin
-  Result := '';
-  case AParam of
-    amount: Result := 'amount';
-    cancelUrl: Result := 'cancel_url';
-    currency: Result := 'currency';
-    description: Result := 'description';
-    email: Result := 'email';
-    mode: Result := 'mode';
-    successUrl: Result := 'success_url';
-  end;
-  if Result = '' then
-    raise Exception.Create('ParamtoString error! unknown parameter: '+TRttiEnumerationType.GetName(AParam));
+  Result := TRttiEnumerationType.GetName(AParam)
 end;
    {
 
@@ -55,6 +45,19 @@ begin
     Result := 'card';
 end;
 
+procedure PaymentMethodsToStrings(APaymentMethods: TpsPaymentMethodsTypes; AStrings: TStrings);
+var
+  APaymentMethod: TpsPaymentMethodType;
+  AIndex: integer;
+begin
+  AIndex := 0;
+  for APaymentMethod in APaymentMethods do
+  begin
+    AStrings.Values['payment_method_types[' + AIndex.ToString + ']'] := PaymentMethodToString(APaymentMethod);
+    Inc(AIndex);
+  end;
+end;
+
 function CheckoutModeToString(ACheckoutMode: TpsCheckoutMode): string;
 begin
   case ACheckoutMode of
@@ -67,10 +70,10 @@ end;
 function IntervalToString(AInterval: TpsRecurring): string;
 begin
   case AInterval of
-    rDaily: Result := 'day';
-    rWeekly: Result := 'week';
-    rMonthly: Result := 'month';
-    rYearly: Result := 'year';
+    Daily: Result := 'day';
+    Weekly: Result := 'week';
+    Monthly: Result := 'month';
+    Yearly: Result := 'year';
   end;
 end;
 

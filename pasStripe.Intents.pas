@@ -10,12 +10,12 @@ type
     Fid: string;
     FAmount: integer;
     FApplicationFee: integer;
-    FMetadata: string;
+    FMetadata: IpsMetadata;
     FPaid: Boolean;
     FCreated: TDateTime;
     FClientSecret: string;
     FPaymentMethod: string;
-    function GetMetaData(AName: string): string;
+    function GetMetaData: IpsMetadata;
     function GetAmount: integer;
     function GetApplicationFee: integer;
     function GetCreated: TDateTime;
@@ -26,6 +26,8 @@ type
   protected
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TJsonObject); overload;
+  public
+    constructor Create; virtual;
   end;
 
   TpsSetupIntent = class(TInterfacedObject, IpsSetupIntent)
@@ -43,9 +45,15 @@ type
 
 implementation
 
-uses SysUtils, DateUtils;
+uses SysUtils, DateUtils, pasStripe.Constants;
 
 { TpsPaymentIntent }
+
+constructor TpsPaymentIntent.Create;
+begin
+  inherited;
+  FMetadata := TpsFactory.Metadata;
+end;
 
 function TpsPaymentIntent.GetAmount: integer;
 begin
@@ -72,21 +80,9 @@ begin
   Result := Fid;
 end;
 
-function TpsPaymentIntent.GetMetaData(AName: string): string;
-var
-  AJson: TJsonObject;
+function TpsPaymentIntent.GetMetaData: IpsMetadata;
 begin
-  Result := '';
-  if FMetadata <> '' then
-  begin
-    AJson := TJsonObject.Create;// Parse(FMetadata) as TJsonObject;
-    try
-      AJson.FromJSON(FMetaData);
-      Result := AJson.S[AName];
-    finally
-      AJson.Free;
-    end;
-  end;
+  Result := FMetaData;
 end;
 
 
@@ -115,16 +111,18 @@ end;
 
 procedure TpsPaymentIntent.LoadFromJson(AJson: TJsonObject);
 begin
-  Fid := AJson.S['id'];
-  FAmount := AJson.I['amount'];
+  Fid := AJson.S[id];
+  FAmount := AJson.I[amount];
   if AJson.IsNull('application_fee_amount') = False then
-    FApplicationFee := AJson.I['application_fee_amount'];
-  if AJson.IsNull('metadata') = False then
-    FMetadata := AJson.O['metadata'].ToJSON;
-  FPaid := AJson.I['amount_received'] >= AJson.I['amount'];
-  FCreated := UnixToDateTime(StrToInt(AJson.S['created']));
-  FClientSecret := AJson.S['client_secret'];
-  if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S['payment_method'];
+    FApplicationFee := AJson.I[application_fee_amount];
+
+  //if AJson.IsNull('metadata') = False then
+  //  FMetadata := AJson.O['metadata'].ToJSON;
+
+  FPaid := AJson.I[amount_received] >= AJson.I[amount];
+  FCreated := UnixToDateTime(StrToInt(AJson.S[created]));
+  FClientSecret := AJson.S[client_secret];
+  if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S[payment_method];
   
 end;
 
@@ -161,9 +159,9 @@ end;
 
 procedure TpsSetupIntent.LoadFromJson(AJson: TJsonObject);
 begin
-  FID := AJson.S['id'];
-  if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S['payment_method'];
-  if not AJson.IsNull('client_secret') then FClientSecret := AJson.S['client_secret'];
+  FID := AJson.S[id];
+  if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S[payment_method];
+  if not AJson.IsNull('client_secret') then FClientSecret := AJson.S[client_secret];
 end;
 
 

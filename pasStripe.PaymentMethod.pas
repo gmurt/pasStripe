@@ -28,7 +28,7 @@ type
 
 implementation
 
-uses SysUtils;
+uses SysUtils, pasStripe.Constants;
 
 { TpsPaymentMethod }
 
@@ -77,17 +77,16 @@ procedure TpsPaymentMethod.LoadFromJson(AJson: TJsonObject);
 var
   ACard: TJsonObject;
 begin
-  FID := AJson.S['id'];
-  if AJson.Types['customer'] = jvtString then FCustomer := AJson.S['customer'];
+  FID := AJson.S[id];
+  if AJson.Types['customer'] = jvtString then FCustomer := AJson.S[customer];
 
   if AJson.Contains('card') then
   begin
     ACard := AJson.O['card'];
-    FExpiryMonth := ACard.I['exp_month'];
-    FExpiryYear := ACard.I['exp_year'];
-    FExpiryYear := ACard.I['exp_year'];
-    FBrand := ACard.S['brand'];
-    FLast4 := ACard.S['last4'];
+    FExpiryMonth := ACard.I[exp_month];
+    FExpiryYear := ACard.I[exp_year];
+    FBrand := ACard.S[brand];
+    FLast4 := ACard.S[last4];
   end;
   FJson := AJson.ToJSON;
 end;

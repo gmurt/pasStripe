@@ -85,7 +85,7 @@ begin
   try
     for m in FList do
     begin
-      AJson.S[m.Name] := m.Value;
+      AJson.AddPair(m.Name, m.Value);
     end;
   finally
     AJson.Free;
@@ -110,13 +110,15 @@ end;
 procedure TpsMetaData.LoadFromJson(AJson: TJsonObject);
 var
   ICount: integer;
+  AMeta: TJSONPair;
 begin
   FList.Clear;
   if AJson = nil then
     Exit;
   for ICount := 0 to AJson.Count-1 do
   begin
-    AddMetaData(AJson.Names[ICount], AJson.S[AJson.Names[ICount]]);
+    AMeta := AJson.Pairs[ICount];
+    AddMetaData(AMeta.JsonString.Value, AMeta.Value);
   end;
 
 end;

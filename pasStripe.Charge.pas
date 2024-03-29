@@ -85,62 +85,8 @@ type
 
 implementation
 
-uses SysUtils, DateUtils;
+uses SysUtils, DateUtils,pasStripe.Constants;
 
-{ TpsUpdateChargeParams }
-                              {
-function TpsUpdateChargeParams.GetDescription: string;
-begin
-  Result := GetParam(description);
-end;
-
-procedure TpsUpdateChargeParams.SetDescription(const Value: string);
-begin
-  SetParam(description, Value);
-end;               }
-
-{ TpsCreateChargeParams }
-                {
-function TpsCreateChargeParams.GetAmount: integer;
-begin
-  Result := StrToIntDef(GetParam(amount), 0);;
-end;
-
-function TpsCreateChargeParams.GetApplicationFeeAmount: integer;
-begin
-  Result := StrToIntDef(GetParam(application_fee_amount), 0);;
-end;
-
-function TpsCreateChargeParams.GetCurrency: string;
-begin
-  Result := GetParam(currency);
-end;
-
-function TpsCreateChargeParams.GetCustomer: string;
-begin
-  Result := GetParam(customer);
-end;
-
-procedure TpsCreateChargeParams.SetAmount(const Value: integer);
-begin
-  SetParam(amount, Value.ToString)
-end;
-
-procedure TpsCreateChargeParams.SetApplicationFeeAmount(const Value: integer);
-begin
-  SetParam(application_fee_amount, Value.ToString)
-end;
-
-procedure TpsCreateChargeParams.SetCurrency(const Value: string);
-begin
-  SetParam(currency, Value);
-end;
-
-procedure TpsCreateChargeParams.SetCustomer(const Value: string);
-begin
-  SetParam(customer, Value);
-end;
-                  }
 { TpsChargeListOptions }
 
 constructor TpsChargeListOptions.Create;
@@ -276,37 +222,37 @@ end;
 procedure TpsCharge.LoadFromJson(AJson: TJsonObject);
 begin
   FJson := AJson.ToJSON;
-  FID := AJson.S['id'];
-  FAmount := AJson.I['amount'];
-  FCurrency := AJson.S['currency'];
+  FID := AJson.S[id];
+  FAmount := AJson.I[amount];
+  FCurrency := AJson.S[currency];
 
   if AJson.IsNull('customer') = False then
   begin
     case AJson.Types['customer'] of
-      jvtObject: FCustomer := AJson.O['customer'].S['id'];
-      jvtString: FCustomer := AJson.S['customer'];
+      jvtObject: FCustomer := AJson.O['customer'].S[id];
+      jvtString: FCustomer := AJson.S[customer];
     end;
   end;
 
-  FRefunded := AJson.I['amount_refunded'];
+  FRefunded := AJson.I[amount_refunded];
 
   if AJson.IsNull('payment_method_details') = False then
   begin
     if AJson.O['payment_method_details'].IsNull('card') = False then
     begin
-      FLast4 := AJson.O['payment_method_details'].O['card'].S['last4'];
-      FCardBrand := AJson.O['payment_method_details'].O['card'].S['brand'];
+      FLast4 := AJson.O['payment_method_details'].O['card'].S[last4];
+      FCardBrand := AJson.O['payment_method_details'].O['card'].S[brand];
     end;
   end;
 
   FMetadata.LoadFromJson(AJson.O['metadata']);
-  FCreated := UnixToDateTime(StrToInt(AJson.S['created']));
+  FCreated := UnixToDateTime(StrToInt(AJson.S[created]));
   if AJson.IsNull('payment_intent') = False then
-    FpaymentIntentID := AJson.S['payment_intent'];
+    FpaymentIntentID := AJson.S[payment_intent];
   if AJson.IsNull('description') = False then
-    FDescription := AJson.S['description'];
+    FDescription := AJson.S[description];
 
-  FStatus := AJson.S['status'];
+  FStatus := AJson.S[status];
 end;
 
 

@@ -39,6 +39,8 @@ type
 
 implementation
 
+uses pasStripe.Constants;
+
 { TpsCustomer }
 
 constructor TpsCustomer.Create;
@@ -78,10 +80,10 @@ end;
 
 procedure TpsCustomer.LoadFromJson(AJson: TJsonObject);
 begin
-  FId := AJson.S['id'];
-  if not AJson.IsNull('name') then Fname := AJson.S['name'];
-  if not AJson.IsNull('description') then FDescription := AJson.S['description'];
-  if not AJson.IsNull('email') then FEmail := AJson.S['email'];
+  FId := AJson.S[id];
+  if not AJson.IsNull('name') then Fname := AJson.S[name];
+  if not AJson.IsNull('description') then FDescription := AJson.S[description];
+  if not AJson.IsNull('email') then FEmail := AJson.S[email];
   FMetaData.LoadFromJson(AJson.O['metadata']);
 end;
 
