@@ -11,16 +11,41 @@ Hopefully this will make it easier for others to use, but is also likely to have
 
 To use, add the pasStripe.pas file to your uses clause, then use the TpsFactory class to create the pasStripe interface.
 
-e.g.
+# Examples
 
+### Create a checkout page...
 ```
-// to display the account name...
+procedure TForm1.btnCreateCheckoutSessionClick(Sender: TObject);
+var
+  AStripe: IpasStripe;
+  AParams: TpsCreateCheckoutParams;
+  AUrl: string;
+begin
+  AStripe := TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');
 
+  AParams := TpsFactory.CreateCheckoutParams(cmPayment, scGbp);
+  try
+    AParams.CustomerEmail := 'john@smith.com';
+    AParams.PaymentMethods := [pmCard];
+    AParams.SuccessUrl := 'https://www.success_url.com';
+    AParams.CancelUrl := 'https://www.cancel_url.com';
+    AParams.LineItems.AddLineItem('Product 1', 500, 2, '', TpsRecurring.None);
+    AParams.LineItems.AddLineItem('Another product', 250, 3, '', TpsRecurring.None);
+    AUrl := AStripe.GenerateCheckoutSession(AParams).Url;
+  finally
+    AParams.Free;
+  end;
+end;
+```
+
+### Display the account name...
+```
+procedure TForm1.btnShowAccountName(Sender: TObject);
 var
   AStripe: IPasStripe;
   AAccount: IpsAccount;
 begin
-  AStripe :=  TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');
+  AStripe := TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');
   if AStripe.TestCredentials then
   begin
     AAccount := Stripe.GetAccount;
@@ -28,9 +53,11 @@ begin
   end;
 end;
 ```
-```
-// to load an ivoice and show the URL...
 
+### Load an ivoice and show the URL...
+```
+
+procedure TForm1.btnGetInvoiceUrl(Sender: TObject);
 var
   AStripe: IPasStripe;
   ACharges: TpsChargeList;
