@@ -2,33 +2,30 @@ unit pasStripe.Charge;
 
 interface
 
-uses pasStripe, pasStripe.Json;
+uses pasStripe, pasStripe.Json, pasStripe.Params;
 
 type
-  TpsChargeParams = class(TInterfacedObject, IpsChargeParams)
+  {TpsUpdateChargeParams = class(TpsBaseParams, IpsUpdateChargeParams)
   private
-    FAmount: integer;
-    FCurrency: string;
-    FPaymentMethodID: string;
-    FCustomerID: string;
-    FDescription: string;
-    FMetaData: IpsMetaData;
-    function GetAmount: integer;
-    function GetCurrency: string;
-    function GetCustomerID: string;
     function GetDescription: string;
-    function GetMetadata: IpsMetadata;
-    function GetPaymentMethodID: string;
-    procedure SetPaymentMethodID(const Value: string);
-    procedure SetCustomerID(const Value: string);
     procedure SetDescription(const Value: string);
-
-  public
-    constructor Create(AAmount: integer; ACurrency: string);  virtual;
-    destructor Destroy; override;
   end;
 
 
+
+  TpsCreateChargeParams = class(TpsUpdateChargeParams, IpsCreateChargeParams)
+  private
+    function GetAmount: integer;
+    function GetApplicationFeeAmount: integer;
+    function GetCurrency: string;
+    function GetCustomer: string;
+    procedure SetAmount(const Value: integer);
+    procedure SetApplicationFeeAmount(const Value: integer);
+    procedure SetCurrency(const Value: string);
+    procedure SetCustomer(const Value: string);
+  end;
+
+                   }
 
   TpsChargeListOptions = class(TInterfacedObject, IpsChargeListOptions)
   private
@@ -90,66 +87,60 @@ implementation
 
 uses SysUtils, DateUtils;
 
-{ TpsChargeParams }
-
-constructor TpsChargeParams.Create(AAmount: integer; ACurrency: string);
+{ TpsUpdateChargeParams }
+                              {
+function TpsUpdateChargeParams.GetDescription: string;
 begin
-  inherited Create;
-  FMetaData := TpsFactory.Metadata;
-  FAmount := AAmount;
-  FCurrency := ACurrency;
+  Result := GetParam(description);
 end;
 
-destructor TpsChargeParams.Destroy;
+procedure TpsUpdateChargeParams.SetDescription(const Value: string);
 begin
-  inherited;
+  SetParam(description, Value);
+end;               }
+
+{ TpsCreateChargeParams }
+                {
+function TpsCreateChargeParams.GetAmount: integer;
+begin
+  Result := StrToIntDef(GetParam(amount), 0);;
 end;
 
-function TpsChargeParams.GetAmount: integer;
+function TpsCreateChargeParams.GetApplicationFeeAmount: integer;
 begin
-  Result := FAmount;
+  Result := StrToIntDef(GetParam(application_fee_amount), 0);;
 end;
 
-function TpsChargeParams.GetCurrency: string;
+function TpsCreateChargeParams.GetCurrency: string;
 begin
-  Result := FCurrency;
+  Result := GetParam(currency);
 end;
 
-function TpsChargeParams.GetCustomerID: string;
+function TpsCreateChargeParams.GetCustomer: string;
 begin
-  Result := FCustomerID;
+  Result := GetParam(customer);
 end;
 
-function TpsChargeParams.GetDescription: string;
+procedure TpsCreateChargeParams.SetAmount(const Value: integer);
 begin
-  Result := FDescription;
+  SetParam(amount, Value.ToString)
 end;
 
-function TpsChargeParams.GetMetadata: IpsMetadata;
+procedure TpsCreateChargeParams.SetApplicationFeeAmount(const Value: integer);
 begin
-  Result := FMetaData;
+  SetParam(application_fee_amount, Value.ToString)
 end;
 
-function TpsChargeParams.GetPaymentMethodID: string;
+procedure TpsCreateChargeParams.SetCurrency(const Value: string);
 begin
-  Result := FPaymentMethodID;
+  SetParam(currency, Value);
 end;
 
-procedure TpsChargeParams.SetCustomerID(const Value: string);
+procedure TpsCreateChargeParams.SetCustomer(const Value: string);
 begin
-  FCustomerID := Value;
+  SetParam(customer, Value);
 end;
-
-procedure TpsChargeParams.SetDescription(const Value: string);
-begin
-  FDescription := Value;
-end;
-
-procedure TpsChargeParams.SetPaymentMethodID(const Value: string);
-begin
-  FPaymentMethodID := Value;
-end;
-
+                  }
 { TpsChargeListOptions }
 
 constructor TpsChargeListOptions.Create;
@@ -318,5 +309,43 @@ begin
   FStatus := AJson.S['status'];
 end;
 
+
+{ TpsChargeUpdateParams }
+               {
+constructor TpsChargeUpdateParams.Create;
+begin
+  FParams := TStringList.Create;
+end;
+
+destructor TpsChargeUpdateParams.Destroy;
+begin
+  FParams.Free;
+  inherited;
+end;
+
+function TpsChargeUpdateParams.GetMetaData(AName: string): string;
+begin
+
+end;
+
+function TpsChargeUpdateParams.GetParam(AParam: TpsChargeUpdateParam): string;
+begin
+
+end;
+
+procedure TpsChargeUpdateParams.PopulateStrings(AStrings: TStrings);
+begin
+
+end;
+
+procedure TpsChargeUpdateParams.SetMetaData(ANAme, AValue: string);
+begin
+
+end;
+
+procedure TpsChargeUpdateParams.SetParam(AParam: TpsChargeUpdateParam; AValue: string);
+begin
+
+end;   }
 
 end.

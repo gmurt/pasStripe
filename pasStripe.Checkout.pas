@@ -3,11 +3,11 @@ unit pasStripe.Checkout;
 interface
 
 uses
-  pasStripe, pasStripe.Json;
+  pasStripe, pasStripe.Json, pasStripe.Params;
 
 type
 
-
+                                               {
   TpsCheckoutParams = class(TInterfacedObject, IpsCheckoutParams)
   private
     FCurrency: string;
@@ -55,7 +55,7 @@ type
     constructor Create; virtual;
     procedure Clear;
   end;
-
+                    }
 
   TpsCheckoutSession = class(TInterfacedObject, IpsCheckoutSession)
   private
@@ -222,7 +222,7 @@ begin
 end;
 
 { TpsCheckoutParams }
-
+      {
 procedure TpsCheckoutParams.Clear;
 begin
   FCurrency := '';
@@ -379,6 +379,6 @@ end;
 procedure TpsCheckoutParams.SetTaxID(const Value: string);
 begin
   FTaxID := Value;
-end;
+end;            }
 
 end.

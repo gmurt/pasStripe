@@ -3,8 +3,7 @@ unit pasStripe.Customer;
 interface
 
 uses
-  pasStripe, pasStripe.Json;
-
+  Classes, pasStripe, pasStripe.Json, System.Generics.Collections, pasStripe.Params;
 
 type
   TpsCustomer = class(TInterfacedObject, IpsCustomer)
@@ -28,10 +27,17 @@ type
     constructor Create; virtual;
   end;
 
-
+ { TpsUpdateCustomerParams = class(TpsBaseParams, IpsUpdateCustomerParams)
+  private
+    function GetDescription: string;
+    function GetName: string;
+    procedure SetDescription(const Value: string);
+    procedure SetName(const Value: string);
+  protected
+    property description: string read GetDescription write SetDescription;
+  end;  }
 
 implementation
-
 
 { TpsCustomer }
 
@@ -94,5 +100,26 @@ begin
 end;
 
 
+{ TpsUpdateCustomerParams }
+         {
+function TpsUpdateCustomerParams.GetDescription: string;
+begin
+  Result := GetParam(TpsParamName.description);
+end;
+
+function TpsUpdateCustomerParams.GetName: string;
+begin
+  Result := GetParam(name);
+end;
+
+procedure TpsUpdateCustomerParams.SetDescription(const Value: string);
+begin
+  SetParam(TpsParamName.description, Value);
+end;
+
+procedure TpsUpdateCustomerParams.SetName(const Value: string);
+begin
+  SetParam(name, Value);
+end;     }
 
 end.

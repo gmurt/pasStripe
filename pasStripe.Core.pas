@@ -15,12 +15,10 @@ type
     FLastError: string;
     function GetAccountID: string;
     function GetLastError: string;
-    function HttpAction(AVerb: THttpVerb; AMethod: string; AParams: TStrings): IHTTPResponse; overload;
-    function HttpAction(AVerb: THttpVerb; AMethod: string; AParams: string): IHTTPResponse; overload;
+    function HttpAction(AVerb: THttpVerb; AMethod: string; AUrlParams: TStrings): IHTTPResponse; overload;
+    function HttpAction(AVerb: THttpVerb; AMethod: string; AUrlParams: string): IHTTPResponse; overload;
     function Get(AMethod: string; AParams: TStrings): string;
-    function Post(AMethod: string; AParams: TStrings): string;
-    function GenerateSubscriptionCheckout(ACheckoutParams: IpsCheckoutParams): string;
-
+    function Post(AMethod: string; AUrlParams: TStrings): string;
   protected
     function GetAccount: IpsAccount;
     function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
@@ -34,6 +32,7 @@ type
 
     function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
     function Getcustomer(AID: string): IpsCustomer;
+    function UpdateCustomer(AID: string; AParams: TpsUpdateCustomerParams): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
 
 
@@ -50,7 +49,7 @@ type
     function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
 
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
-    function CreateCharge(AChargeParams: IpsChargeParams; var AError: string): IpsCharge;
+    function CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
     function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
 
@@ -58,11 +57,11 @@ type
 
 
     function RefundCharge(AChargeID: string; var AError: string): Boolean;
-    function UpdateCharge(AChargeID: string; ADescription: string): IpsCharge;
+    function UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
 
     function ExpireSession(ASessionID: string): IpsCheckoutSession;
 
-    function GenerateCheckoutSession(AOptions: IpsCheckoutParams): IpsCheckoutSession;
+    function GenerateCheckoutSession(AParams: TpsCreateCheckoutParams): IpsCheckoutSession;
 
     function DeleteAccount(AAccount: string): Boolean;
     function GetData(AResource: string; const AParams: TStrings = nil): string;
@@ -78,7 +77,7 @@ type
 
 implementation
 
-uses SysUtils, DateUtils, Math, pasStripe.Utils, System.Json;
+uses SysUtils, DateUtils, Math, pasStripe.Utils, System.Json, System.NetEncoding;
 
 const
   C_ACCOUNTS = 'accounts';
@@ -133,19 +132,18 @@ function TPasStripe.CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency:
   AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
 var
   AParams: TStrings;
-  AJson: TJsonObject;
   AData: string;
   ICount: integer;
 begin
   Result := TpsFactory.PaymentIntent;
   AParams := TStringList.Create;
-  AJson := TJsonObject.Create;
   try
     AParams.Values['amount'] := AAmountPence.ToString;
     AParams.Values['description'] := ADesc;
     AParams.Values['application_fee_amount'] := AApplicationFee.ToString;
     AParams.Values['currency'] := ACurrency;
     AParams.Values['payment_method_types[]'] := 'card';
+    AParams.Values['setup_future_usage'] := 'off_session';
 
     if AMetaData <> nil then
     begin
@@ -153,13 +151,10 @@ begin
         AParams.Values['metadata[' + AMetaData.Names[ICount] + ']'] :=
           AMetaData.ValueFromIndex[ICount];
     end;
-
     AData := Post('payment_intents', AParams);
-    //AJson.FromJSON(AData);
-    Result.LoadFromJson(AJson);
+    Result.LoadFromJson(AData);
   finally
     AParams.Free;
-    AJson.Free;
   end;
 end;
 
@@ -183,7 +178,7 @@ begin
 end;
 
 function TPasStripe.HttpAction(AVerb: THttpVerb; AMethod: string;
-  AParams: TStrings): IHTTPResponse;
+  AUrlParams: TStrings): IHTTPResponse;
 
   function ParamsToUrl(AStrings: TStrings): string;
   var
@@ -192,7 +187,7 @@ function TPasStripe.HttpAction(AVerb: THttpVerb; AMethod: string;
     Result := '';
     for ICount := 0 to AStrings.Count - 1 do
     begin
-      Result := Result + AStrings[ICount];
+      Result := Result + TNetEncoding.URL.Encode(AStrings.Names[ICount])+'='+TNetEncoding.URL.Encode(AStrings.ValueFromIndex[ICount]);
       if ICount < AStrings.Count - 1 then
         Result := Result + '&';
     end;
@@ -204,16 +199,17 @@ var
   APostParams: TStrings;
 begin
   AHttp := THTTPClient.Create;
-  APostParams := TStringList.Create;
+  APostParams := TStringList.Create; // unused, required by Post() to prevent AV
   try
     AUrl := 'https://api.stripe.com/v1/' + AMethod;
-    if AParams <> nil then
+    if AUrlParams <> nil then
     begin
-      if AParams.Count > 0 then
-        AUrl := AUrl + '?' + ParamsToUrl(AParams);
+      if AUrlParams.Count > 0 then
+        AUrl := AUrl + '?' + ParamsToUrl(AUrlParams);
     end;
 
     AHttp.CustomHeaders['Authorization'] := 'Bearer ' + FSecretKey;
+    //AHttp.ContentType := 'application/json';
 
     if FAccount <> '' then
       AHttp.CustomHeaders['Stripe-Account'] := FAccount;
@@ -221,8 +217,7 @@ begin
     if AMethod.ToLower = 'account_sessions' then
       AHttp.CustomHeaders['Stripe-Version'] := '2022-08-01; embedded_connect_beta=v1';
 
-    if Assigned(AParams) then APostParams.Assign(AParams);
-
+    
 
     case AVerb of
       httpGet: Result := AHttp.Get(AUrl);
@@ -236,14 +231,13 @@ begin
   end;
 end;
 
-function TPasStripe.HttpAction(AVerb: THttpVerb; AMethod, AParams: string)
-  : IHTTPResponse;
+function TPasStripe.HttpAction(AVerb: THttpVerb; AMethod, AUrlParams: string): IHTTPResponse;
 var
   AStrings: TStrings;
 begin
   AStrings := TStringList.Create;
   try
-    AStrings.Text := AParams;
+    AStrings.Text := AUrlParams;
     Result := HttpAction(AVerb, AMethod, AStrings);
   finally
     AStrings.Free;
@@ -264,139 +258,20 @@ begin
   end;
 end;
 
-function TPasStripe.GenerateSubscriptionCheckout(ACheckoutParams: IpsCheckoutParams): string;
+function TPasStripe.GenerateCheckoutSession(AParams: TpsCreateCheckoutParams): IpsCheckoutSession;
 var
-  AParams: TStrings;
   AData: string;
-  AJson: TJsonObject;
-  pm: TpsPaymentMethodType;
-  AIndex: integer;
-begin
-
-  AParams := TStringList.Create;
-  try
-    AIndex := 0;
-    for pm in ACheckoutParams.PaymentMethods do
-    begin
-      AParams.Values['payment_method_types[' + AIndex.ToString + ']'] :=
-        PaymentMethodToString(pm);
-      Inc(AIndex);
-    end;
-
-    AParams.Values['mode'] := 'subscription';
-
-    if ACheckoutParams.Customer <> '' then
-      AParams.Values['customer'] := ACheckoutParams.Customer;
-    if ACheckoutParams.Email <> '' then
-      AParams.Values['customer_email'] := ACheckoutParams.Email;
-
-    AParams.Values['success_url'] := ACheckoutParams.SuccessUrl;
-    AParams.Values['cancel_url'] := ACheckoutParams.CancelUrl;
-
-    AParams.Values['line_items[0][price]'] := ACheckoutParams.PriceID;
-    // APriceID;
-    AParams.Values['line_items[0][quantity]'] := '1';
-
-    if ACheckoutParams.TaxID <> '' then
-      AParams.Values['line_items[0][tax_rates][]'] := ACheckoutParams.TaxID;
-
-    ACheckoutParams.MetaData.Enumerate(
-      procedure(m: TpsMetaDataRecord)
-      begin
-        AParams.Values['metadata[' + m.Name + ']'] := m.Value;
-        AParams.Values['subscription_data[[metadata[' + m.Name + ']]'] := m.Value;
-
-      end
-    );
-
-    AData := Post('checkout/sessions', AParams);
-    AJson := TJsonObject.Create;
-    try
-      AJson.FromJSON(AData);
-      if FLastError = '' then
-        Result := AJson.S['url'];
-    finally
-      AJson.Free;
-    end;
-  finally
-    AParams.Free;
-  end;
-end;
-
-function TPasStripe.GenerateCheckoutSession(AOptions: IpsCheckoutParams): IpsCheckoutSession;
-var
-  AParams: TStrings;
-  AData: string;
-  APaymentMethod: TpsPaymentMethodType;
-  AIndex: integer;
+  AStrings: TStrings;
 begin
   Result := TpsFactory.CheckoutSession;
-  AParams := TStringList.Create;
+  AStrings := TStringList.Create;
   try
-    AIndex := 0;
-    for APaymentMethod in AOptions.PaymentMethods do
-    begin
-      if APaymentMethod = pmDirectDebit then
-        AParams.Values['payment_method_types[' + AIndex.ToString + ']'] :=
-          'bacs_debit';
-      if APaymentMethod = pmCard then
-        AParams.Values['payment_method_types[' + AIndex.ToString + ']']
-          := 'card';
-      Inc(AIndex);
-    end;
-
-    AParams.Values['mode'] := CheckoutModeToString(AOptions.Mode);
-    AParams.Values['currency'] := AOptions.Currency;
-
-    if AOptions.Customer <> '' then
-      AParams.Values['customer'] := AOptions.Customer;
-    if AOptions.Email <> '' then
-      AParams.Values['customer_email'] := AOptions.Email;
-    AParams.Values['success_url'] := AOptions.SuccessUrl;
-    AParams.Values['cancel_url'] := AOptions.CancelUrl;
-    AParams.Values['client_reference_id'] := AOptions.ClientReferenceID;
-
-    if AOptions.PriceID <> '' then
-    begin
-      AParams.Values['line_items[0][price'] := AOptions.PriceID;
-
-    end
-    else
-    begin
-      AParams.Values['line_items[0][price_data][currency]'] :=
-        AOptions.Currency;
-      AParams.Values['line_items[0][price_data][product_data][name]'] :=
-        AOptions.Description;
-      AParams.Values['line_items[0][price_data][unit_amount]'] := Round(AOptions.Amount).ToString;
-    end;
-    AParams.Values['line_items[0][quantity]'] := '1';
-    AParams.Values['line_items[0][tax_rates][]'] := AOptions.TaxID;
-
-    if AOptions.Mode = cmPayment then
-    begin
-      if AOptions.ApplicationFee > 0 then
-        AParams.Values['payment_intent_data[application_fee_amount]'] :=
-          AOptions.ApplicationFee.ToString;
-
-      if AOptions.Description <> '' then
-        AParams.Values['payment_intent_data[description]'] :=
-          AOptions.Description;
-
-      AOptions.MetaData.Enumerate(
-        procedure(m: TpsMetaDataRecord)
-        begin
-          AParams.Values['metadata[' + m.Name + ']'] := m.Value;
-          AParams.Values['payment_intent_data[metadata][' + m.Name + ']'] := m.Value;
-        end
-      );
-    end;
-
-    AData := Post('checkout/sessions', AParams);
-    if FLastError <> '' then
+    AParams.PopulateStrings(AStrings);
+    AData := Post('checkout/sessions', AStrings);
+    if FLastError = '' then
       Result.LoadFromJson(AData);
-
   finally
-    AParams.Free;
+    AStrings.Free;
   end;
 end;
 
@@ -531,20 +406,20 @@ begin
   end;
 end;
 
-function TPasStripe.Post(AMethod: string; AParams: TStrings): string;
+function TPasStripe.Post(AMethod: string; AUrlParams: TStrings): string;
 var
   AJson: TJsonObject;
-  AData: string;
+  AResult: string;
 begin
   Result := '';
   FLastError := '';
   AJson := TJSONObject.Create;
   try
-    AData := HttpAction(httpPost, AMethod, AParams).ContentAsString;
-    AJson.FromJSON(AData);
+    AResult := HttpAction(httpPost, AMethod, AUrlParams).ContentAsString;
+    AJson.FromJSON(AResult);
     FLastError := AJson.O['error'].S['message'];
     if FLastError = '' then
-      Result := AData;
+      Result := AResult;
   finally
     AJson.Free;
   end;
@@ -584,7 +459,7 @@ begin
    Result := AAccount.ID <> '';
 end;
 
-function TPasStripe.UpdateCharge(AChargeID, ADescription: string): IpsCharge;
+function TPasStripe.UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
 var
   AData: string;
   AStrings: TStrings;
@@ -593,7 +468,7 @@ begin
   AStrings := TStringList.Create;
   AJson := TJsonObject.Create;
   try
-    AStrings.Values['description'] := ADescription;
+    AChargeParams.PopulateStrings(AStrings);
     AData := Post('charges/' + AChargeID, AStrings);
     AJson.FromJSON(AData);
     Result.LoadFromJson(AJson);
@@ -603,37 +478,38 @@ begin
   end;
 end;
 
-function TPasStripe.CreateCharge(AChargeParams: IpsChargeParams; var AError: string): IpsCharge;
+function TPasStripe.UpdateCustomer(AID: string; AParams: TpsUpdateCustomerParams): IpsCustomer;
+var
+  AData: string;
+  AUrlParams: TStrings;
+begin
+  AUrlParams := TStringList.Create;
+  try
+    AParams.PopulateStrings(AUrlParams);
+
+    Result := TpsFactory.Customer;
+    AData := Post('customers/' + AID, AUrlParams);
+    if FLastError = '' then
+      Result.LoadFromJson(AData);
+  finally
+    AUrlParams.Free;
+  end;
+end;
+
+function TPasStripe.CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
 var
   AParams: TStrings;
    AJson: TJsonObject;
   AResult: string;
 begin
-  AError := '';
   Result := TpsFactory.Charge;
 
   AJson := TJsonObject.Create;
   AParams := TStringList.Create;
   try
-    AParams.Values['payment_method'] := AChargeParams.PaymentMethodID;
-    AParams.Values['customer'] := AChargeParams.CustomerID;
-    AParams.Values['currency'] := AChargeParams.Currency;
-    AParams.Values['description'] := AChargeParams.Description;
-    AParams.Values['amount'] := AChargeParams.Amount.ToString;
-    AParams.Values['confirm'] := 'true';
-    AParams.Values['off_session'] := 'true';
-
-    AChargeParams.Metadata.Enumerate(
-      procedure(AMeta: TpsMetaDataRecord)
-      begin
-        AParams.Values['metadata[' + AMeta.Name + ']'] := AMeta.Value;
-      end
-    );
-
+    AChargeParams.PopulateStrings(AParams);
     AResult := Post('payment_intents', AParams);
     AJson.FromJSON(AResult);
-//    if AJson.S['status'] = 'succeeded' then
-
     if FLastError = '' then
       Result.LoadFromJson(AJson.O['charges'].A['data'].Items[0] as TJSONObject);
   finally
@@ -732,7 +608,6 @@ var
 begin
   Result := TpsFactory.CheckoutSession;
   AData := Get('checkout/sessions/' + ASessionID, nil);
-
   Result.LoadFromJson(AData);
 end;
 
@@ -822,6 +697,7 @@ begin
   AJson := TJsonObject.Create;
   try
     if ACustID <> '' then AParams.Values['customer'] := ACustID;
+    AParams.Values['usage'] := 'off_session';
     //AParams.Values['confirm'] := 'true';
     AData := Post('setup_intents', AParams);
     AJson.FromJSON(AData);
