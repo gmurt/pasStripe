@@ -34,10 +34,10 @@ type
     function PaymentMethod: IpsPaymentMethod;
     function Customer: IpsCustomer;
     function Charge: IpsCharge;
-    function ChargeList: TpsChargeList;
+    function ChargeList: IpsChargeList;
     function ChargeListOptions: IpsChargeListOptions;
     function Invoice: IpsInvoice;
-    function InvoiceList: TpsInvoiceList;
+    function InvoiceList: IpsInvoiceList;
     function PaymentIntent: IpsPaymentIntent;
     function SetupIntent: IpsSetupIntent;
     function CheckoutSession: IpsCheckoutSession;
@@ -83,7 +83,7 @@ begin
   Result := TpsCharge.Create;
 end;
 
-function TpsFactory.ChargeList: TpsChargeList;
+function TpsFactory.ChargeList: IpsChargeList;
 begin
   Result := TpsChargeList.Create;
 end;
@@ -137,7 +137,7 @@ begin
   Result := TpsInvoice.Create;
 end;
 
-function TpsFactory.InvoiceList: TpsInvoiceList;
+function TpsFactory.InvoiceList: IpsInvoiceList;
 begin
   Result := TpsInvoiceList.Create;
 end;

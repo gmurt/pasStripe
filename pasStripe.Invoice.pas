@@ -24,7 +24,7 @@ unit pasStripe.Invoice;
 
 interface
 
-uses pasStripe, pasStripe.Json;
+uses pasStripe, pasStripe.Base, pasStripe.Json;
 
 type
   TpsInvoice = class(TInterfacedObject, IpsInvoice)
@@ -40,6 +40,7 @@ type
     procedure LoadFromJson(AJson: TJsonObject); overload;
   end;
 
+  TpsInvoiceList = class(TpsBaseList<IpsInvoice>, IpsInvoiceList);
 
 implementation
 

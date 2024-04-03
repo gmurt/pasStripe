@@ -130,7 +130,7 @@ type
 
 implementation
 
-uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils;
+uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils, System.JSON;
 
 { TpsCreateCheckoutParams }
 

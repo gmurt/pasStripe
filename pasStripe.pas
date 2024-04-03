@@ -42,14 +42,21 @@ type
     GreaterThan: TDateTime;
   end;
 
-  // forward declarations...
-  IpsCharge = interface;
-  IpsInvoice = interface;
+  IpsBaseList<T> = interface(IInterface)
+    ['{EB23D8A8-2FE4-4562-B64F-6B41D9DB116E}']
+    function GetCount: integer;
+    function GetEnumerator: TList<T>.TEnumerator;
+    function Add(const Value: T): Integer;
+    property Count: integer read GetCount;
+  end;
 
 
   // list classes (this are not interfaces and therefore requie freeing after use.
-  TpsChargeList = class(TList<IpsCharge>);
-  TpsInvoiceList = class(TList<IpsInvoice>);
+
+
+
+
+
 
   IpsMetaDataRecord = interface
     ['{9AF60898-83A8-41D9-8907-5A864184FE3C}']
@@ -401,8 +408,9 @@ type
     property MetaData: IpsMetaData read GetMetaData;
   end;
 
-
-
+  IpsChargeList = interface(IpsBaseList<IpsCharge>)
+    ['{CAED85A6-F41D-482F-9928-70F2ABE8431F}']
+  end;
 
   IpsCustomer = interface
     ['{8687A786-45D8-4797-80D2-E260345A6FB0}']
@@ -441,6 +449,11 @@ type
     property Json: string read GetJson;
   end;
 
+  IpsInvoiceList = interface(IpsBaseList<IpsInvoice>)
+    ['{F4231DF3-D9F1-4111-8786-0342F4780B2B}']
+  end;
+
+
   IpsAccount = interface(IpsBaseObjectWithMetaData)
     ['{748FD42C-EBDA-4DE3-A55F-E304E4797EA1}']
     function GetChargesEnabled: Boolean;
@@ -466,7 +479,7 @@ type
     function TestCredentials: Boolean;
     function GetLastError: string;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
-    function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
+    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
     function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
@@ -500,10 +513,10 @@ type
     function PaymentMethod: IpsPaymentMethod;
     function Customer: IpsCustomer;
     function Charge: IpsCharge;
-    function ChargeList: TpsChargeList;
+    function ChargeList: IpsChargeList;
     function ChargeListOptions: IpsChargeListOptions;
     function Invoice: IpsInvoice;
-    function InvoiceList: TpsInvoiceList;
+    function InvoiceList: IpsInvoiceList;
     function PaymentIntent: IpsPaymentIntent;
     function SetupIntent: IpsSetupIntent;
     function CheckoutSession: IpsCheckoutSession;

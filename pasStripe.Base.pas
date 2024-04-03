@@ -24,7 +24,7 @@ unit pasStripe.Base;
 
 interface
 
-uses pasStripe, Classes, System.Generics.Collections, SysUtils, pasStripe.Json;
+uses pasStripe, SysUtils, Classes, System.Generics.Collections, pasStripe.Json;
 
 type
   TpsBaseObject = class(TInterfacedObject, IpsBaseObject)
@@ -46,24 +46,49 @@ type
     constructor Create; virtual;
   end;
 
-  TpsBaseList = class(TInterfacedObject)
-  private
-  protected
-    FList: TList;
+  TpsBaseList<T> = class(TInterfacedObject, IpsBaseList<T>)
+  strict private
+    FList: TList<T>;
+    function GetEnumerator: TList<T>.TEnumerator;
+  strict protected
+    function Add(const Value: T): Integer;
     function GetCount: integer;
-
-
   public
-
+    constructor Create; virtual;
+    destructor Destroy; override;
   end;
-
-
-
-
 
 implementation
 
 uses pasStripe.MetaData;
+
+
+constructor TpsBaseList<T>.Create;
+begin
+  inherited;
+  FList := TList<T>.Create;
+end;
+
+destructor TpsBaseList<T>.Destroy;
+begin
+  FreeAndNil(FList);
+  inherited;
+end;
+
+function TpsBaseList<T>.GetCount: integer;
+begin
+  Result := FList.Count;
+end;
+
+function TpsBaseList<T>.GetEnumerator: TList<T>.TEnumerator;
+begin
+  Result := FList.GetEnumerator;
+end;
+
+function TpsBaseList<T>.Add(const Value: T): Integer;
+begin
+  Result := FList.Add(Value);
+end;
 
 { TpsBaseObjectWithMetadata }
 
@@ -97,12 +122,6 @@ end;
 { TpsBaseList<T> }
 
 
-function TpsBaseList.GetCount: integer;
-begin
-  Result := FList.Count;
-end;
-
-
 
 
 { TpsBaseObject }
@@ -124,5 +143,36 @@ begin
     AObj.Free;
   end;
 end;
+                   (*
+function TpsBaseList<T>.GetEnumeratorGeneric: IEnumerator<T>;
+begin
+  Result := FList.GetEnumerator();
+end;
 
+{ IEnumerable }
+function TpsBaseList<T>.GetEnumerator: IEnumerator;
+begin
+
+end;
+
+             *)     (*
+
+constructor TMyEnumerator<T>.Create(const AList: TList<T>);
+begin
+  FIndex := -1;
+  FList := AList;
+end;
+
+function TMyEnumerator<T>.GetCurrent: T;
+begin
+  Result := FList[FIndex];
+end;
+
+function TMyEnumerator<T>.MoveNext: Boolean;
+begin
+  Result := FIndex < FList.Count - 1;
+  if Result then
+    Inc(FIndex);
+end;
+                 *)
 end.

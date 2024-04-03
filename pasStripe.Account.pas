@@ -62,7 +62,7 @@ type
 
 implementation
 
-uses pasStripe.Constants;
+uses pasStripe.Constants, System.Json;
 
 { TpsAccount }
 
@@ -79,8 +79,6 @@ begin
   Fcharges_enabled := AJson.B[charges_enabled];
   if not AJson.O['business_profile'].IsNull('name') then
     Fname := AJson.O['business_profile'].S[name];
-
-
 end;
 
 

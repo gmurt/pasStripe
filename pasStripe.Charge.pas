@@ -105,9 +105,7 @@ type
     procedure LoadFromJson(AJson: TJsonObject); override;
   end;
 
-
-
-
+  TpsChargeList = class(TpsBaseList<IpsCharge>, IpsChargeList);
 
 implementation
 

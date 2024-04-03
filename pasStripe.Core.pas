@@ -78,7 +78,7 @@ type
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
     function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
-    function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
+    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
 
     function GetInvoice(AID: string): IpsInvoice;
 
@@ -288,7 +288,7 @@ begin
   FLastError := '';
   AJson := TJSONObject.Create;
   try
-    AResult := HttpAction(httpGet, AMethod, nil).ContentAsString;
+    AResult := HttpAction(httpGet, AMethod, AParams).ContentAsString;
     AJson.FromJSON(AResult);
     FLastError := AJson.O[C_ERROR].S[&message];
     if FLastError = '' then
@@ -565,7 +565,7 @@ begin
   end;
 end;
 
-function TPasStripe.GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
+function TPasStripe.GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
 var
   AJson: TJsonObject;
   AData: string;
