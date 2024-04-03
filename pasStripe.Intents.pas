@@ -1,21 +1,56 @@
+{*******************************************************************************
+*                                                                              *
+*  pasStripe - Stripe Interfaces for Delphi                                    *
+*                                                                              *
+*  https://github.com/gmurt/pasStripe                                          *
+*                                                                              *
+*  Copyright 2024 Graham Murt                                                  *
+*                                                                              *                                                                              *
+*  Licensed under the Apache License, Version 2.0 (the "License");             *
+*  you may not use this file except in compliance with the License.            *
+*  You may obtain a copy of the License at                                     *
+*                                                                              *
+*    http://www.apache.org/licenses/LICENSE-2.0                                *
+*                                                                              *
+*  Unless required by applicable law or agreed to in writing, software         *
+*  distributed under the License is distributed on an "AS IS" BASIS,           *
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    *
+*  See the License for the specific language governing permissions and         *
+*  limitations under the License.                                              *
+*                                                                              *
+*******************************************************************************}
+
 unit pasStripe.Intents;
 
 interface
 
-uses pasStripe, pasStripe.Json;
+uses pasStripe, pasStripe.Base, pasStripe.Json, pasStripe.Params;
 
 type
-  TpsPaymentIntent = class(TInterfacedObject, IpsPaymentIntent)
+  TpsCreatePaymentIntentParams = class(TpsBaseParamsWithMetaData, IpsCreatePaymentIntentParams)
+  private
+    function GetApplicationFeeAmount: integer;
+    function GetConfirm: Boolean;
+    function GetCurrency: TpsCurrency;
+    function GetCustomer: string;
+    function GetPaymentMethod: string;
+    procedure SetApplicationFeeAmount(const Value: integer);
+    procedure SetConfirm(const Value: Boolean);
+    procedure SetCurrency(const Value: TpsCurrency);
+    procedure SetCustomer(const Value: string);
+    procedure SetPaymentMethod(const Value: string);
+  end;
+
+
+  TpsPaymentIntent = class(TpsBaseObjectWithMetadata, IpsPaymentIntent)
   private
     Fid: string;
     FAmount: integer;
     FApplicationFee: integer;
-    FMetadata: IpsMetadata;
     FPaid: Boolean;
     FCreated: TDateTime;
     FClientSecret: string;
     FPaymentMethod: string;
-    function GetMetaData: IpsMetadata;
     function GetAmount: integer;
     function GetApplicationFee: integer;
     function GetCreated: TDateTime;
@@ -24,13 +59,10 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
   protected
-    procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
-  public
-    constructor Create; virtual;
+    procedure LoadFromJson(AJson: TJsonObject); override;
   end;
 
-  TpsSetupIntent = class(TInterfacedObject, IpsSetupIntent)
+  TpsSetupIntent = class(TpsBaseObjectWithMetadata, IpsSetupIntent)
   private
     FID: string;
     FClientSecret: string;
@@ -39,21 +71,15 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
   protected
-    procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+
+    procedure LoadFromJson(AJson: TJsonObject); override;
   end;
 
 implementation
 
-uses SysUtils, DateUtils, pasStripe.Constants;
+uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils;
 
 { TpsPaymentIntent }
-
-constructor TpsPaymentIntent.Create;
-begin
-  inherited;
-  FMetadata := TpsFactory.Metadata;
-end;
 
 function TpsPaymentIntent.GetAmount: integer;
 begin
@@ -80,12 +106,6 @@ begin
   Result := Fid;
 end;
 
-function TpsPaymentIntent.GetMetaData: IpsMetadata;
-begin
-  Result := FMetaData;
-end;
-
-
 function TpsPaymentIntent.GetPaid: Boolean;
 begin
   Result := FPaid;
@@ -96,28 +116,13 @@ begin
   Result := FPaymentMethod;
 end;
 
-procedure TpsPaymentIntent.LoadFromJson(AJson: string);
-var
-  AJsonObj: TJsonObject;
-begin
-  AJsonObj := TJsonObject.Create;
-  try
-    AJsonObj.FromJSON(AJson);
-    LoadFromJson(AJsonObj);
-  finally
-    AJsonObj.Free;
-  end;
-end;
-
 procedure TpsPaymentIntent.LoadFromJson(AJson: TJsonObject);
 begin
+  inherited;
   Fid := AJson.S[id];
   FAmount := AJson.I[amount];
   if AJson.IsNull('application_fee_amount') = False then
     FApplicationFee := AJson.I[application_fee_amount];
-
-  //if AJson.IsNull('metadata') = False then
-  //  FMetadata := AJson.O['metadata'].ToJSON;
 
   FPaid := AJson.I[amount_received] >= AJson.I[amount];
   FCreated := UnixToDateTime(StrToInt(AJson.S[created]));
@@ -144,25 +149,65 @@ begin
   Result := FPaymentMethod;
 end;
 
-procedure TpsSetupIntent.LoadFromJson(AJson: string);
-var
-  AJsonObj: TJsonObject;
-begin
-  AJsonObj := TJsonObject.Create;
-  try
-    AJsonObj.FromJSON(AJson);
-    LoadFromJson(AJsonObj);
-  finally
-    AJsonObj.Free;
-  end;
-end;
-
 procedure TpsSetupIntent.LoadFromJson(AJson: TJsonObject);
 begin
+  inherited;
   FID := AJson.S[id];
   if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S[payment_method];
   if not AJson.IsNull('client_secret') then FClientSecret := AJson.S[client_secret];
 end;
 
+
+{ TpsCreatePaymentIntentParams }
+
+function TpsCreatePaymentIntentParams.GetApplicationFeeAmount: integer;
+begin
+  Result := GetInteger(application_fee_amount);
+end;
+
+function TpsCreatePaymentIntentParams.GetConfirm: Boolean;
+begin
+  Result := GetBoolean(confirm);
+end;
+
+function TpsCreatePaymentIntentParams.GetCurrency: TpsCurrency;
+begin
+  Result := StringToCurrency(GetString(currency));
+end;
+
+function TpsCreatePaymentIntentParams.GetCustomer: string;
+begin
+  Result := GetString(customer);
+end;
+
+function TpsCreatePaymentIntentParams.GetPaymentMethod: string;
+begin
+  Result := GetString(payment_method);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetApplicationFeeAmount(const Value: integer);
+begin
+  SetInteger(application_fee_amount, Value);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetConfirm(const Value: Boolean);
+begin
+  SetBoolean(confirm, Value);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetCurrency(const Value: TpsCurrency);
+begin
+  SetString(currency, CurrencyToString(Value));
+end;
+
+procedure TpsCreatePaymentIntentParams.SetCustomer(const Value: string);
+begin
+  SetString(customer, Value);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetPaymentMethod(const Value: string);
+begin
+  SetString(payment_method, Value);
+end;
 
 end.

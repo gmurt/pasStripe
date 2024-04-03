@@ -1,8 +1,31 @@
+{*******************************************************************************
+*                                                                              *
+*  pasStripe - Stripe Interfaces for Delphi                                    *
+*                                                                              *
+*  https://github.com/gmurt/pasStripe                                          *
+*                                                                              *
+*  Copyright 2024 Graham Murt                                                  *
+*                                                                              *                                                                              *
+*  Licensed under the Apache License, Version 2.0 (the "License");             *
+*  you may not use this file except in compliance with the License.            *
+*  You may obtain a copy of the License at                                     *
+*                                                                              *
+*    http://www.apache.org/licenses/LICENSE-2.0                                *
+*                                                                              *
+*  Unless required by applicable law or agreed to in writing, software         *
+*  distributed under the License is distributed on an "AS IS" BASIS,           *
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    *
+*  See the License for the specific language governing permissions and         *
+*  limitations under the License.                                              *
+*                                                                              *
+*******************************************************************************}
+
 unit pasStripe;
 
 interface
 
-uses Classes, SysUtils, System.Json, System.Generics.Collections, pasStripe.Constants;
+uses Classes, SysUtils, System.Json, System.Generics.Collections,
+  pasStripe.Constants;
 
 type
   TpsPaymentMethodType = (pmDirectDebit, pmCard);
@@ -10,151 +33,236 @@ type
   TpsCheckoutMode = (cmSetup, cmPayment, cmSubscription);
   TpsRecurring = (None, Daily, Weekly, Monthly, Yearly);
   TpsCurrency = (scUnknown, scGbp, scEur, scUsd);
-  TpsFutureUsage = (fuOnSession, fuOffSession);
+  TpsFutureUsage = (psOnSession, psOffSession);
 
-  TpsParamName = (id, amount, amount_received, amount_refunded, application_fee_amount, brand, cancel_url, charge, charges_enabled,
-                  client_secret, confirm, created, customer,customer_email, currency, deleted, description, email, exp_month, exp_year,
-                  has_more, invoice_pdf, last4, &message, mode, name, payment_intent, payment_method, payment_status, price_id,
-                  reason, setup_intent,
-                  status, success_url, url);
+  TpsListParamsDateFilter = record
+    LessThan: TDateTime;
+    LessThanOrEqual: TDateTime;
+    GreaterThanOrEqual: TDateTime;
+    GreaterThan: TDateTime;
+  end;
 
-  TpsParamNames = set of TpsParamName;
+  // forward declarations...
+  IpsCharge = interface;
+  IpsInvoice = interface;
 
-  TpsMetaDataRecord = class
-    Name:  string;
-    Value: string;
+
+  // list classes (this are not interfaces and therefore requie freeing after use.
+  TpsChargeList = class(TList<IpsCharge>);
+  TpsInvoiceList = class(TList<IpsInvoice>);
+
+  IpsMetaDataRecord = interface
+    ['{9AF60898-83A8-41D9-8907-5A864184FE3C}']
+    function GetName: string;
+    function GetValue: string;
+    procedure SetName(const Value: string);
+    procedure SetValue(const Value: string);
+    property Name: string read GetName write SetName;
+    property Value: string read GetValue write SetValue;
   end;
 
   IpsMetadata = interface
     ['{3D53944B-F0FA-4485-A0DB-923047025E7C}']
     function GetValue(AName: string): string;
     procedure SetValue(AName: string; const Value: string);
-    function FindMetaData(AName: string): TpsMetaDataRecord;
-    function AddMetaData(AName, AValue: string): TpsMetaDataRecord;
-    function GetAsJson: string;
-    procedure LoadFromJson(AJson: TJsonObject);
-    procedure Enumerate(ACallback: TProc<TpsMetaDataRecord>);
+    function FindMetaData(AName: string): IpsMetaDataRecord;
+    function AddMetaData(AName, AValue: string): IpsMetaDataRecord;
     procedure Clear;
+    procedure Enumerate(ACallback: TProc<IpsMetaDataRecord>);
+    procedure LoadFromJson(AJson: TJSONObject);
     property Value[AName: string]: string read GetValue write SetValue; default;
-    property AsJson: string read GetAsJson;
   end;
 
-  TpsBaseParams = class
-  strict private
-    FParams: TStrings;
-  protected
-    function GetInteger(AParam: TpsParamName): integer;
-    function GetString(AParam: TpsParamName): string;
-    function GetBoolean(AParam: TpsParamName): Boolean;
-    function GetMetaData(AName: string): string;
-    procedure SetString(AParam: TpsParamName; const AValue: string);
-    procedure SetInteger(AParam: TpsParamName; const AValue: integer);
-    procedure SetBoolean(AParam: TpsParamName; const AValue: Boolean);
-    procedure SetMetaData(AName, AValue: string);
-  public
-    constructor Create; virtual;
-    destructor Destroy; override;
-    procedure PopulateStrings(AStrings: TStrings); virtual;
-    property MetaData[AName: string]: string read GetMetaData write SetMetaData;
+  IpsBaseObject = interface
+    ['{8BDFD4A0-135A-4759-892D-CAD9DA96765B}']
   end;
 
-  TpsUpdateChargeParams = class(TpsBaseParams)
-  public
-    property Description: string index Ord(description) read GetString write SetString;
+  IpsBaseObjectWithMetaData = interface
+    ['{C1E6245B-026C-4C5C-8708-1B0400EE7053}']
+    function GetMetadata: IpsMetadata;
+    procedure LoadFromJson(AJson: string);
+    property MetaData: IpsMetadata read GetMetaData;
   end;
-
-  TpsCreateChargeParams = class(TpsUpdateChargeParams)
-  public
-    property Amount: integer index Ord(amount) read GetInteger write SetInteger;
-    property ApplicationFeeAmount: integer index(application_fee_amount) read GetInteger write SetInteger;
-    property Confirm: boolean index(confirm) read GetBoolean write SetBoolean;
-    property Currency: string index Ord(currency) read GetString write SetString;
-    property Customer: string index Ord(customer) read GetString write SetString;
-    property Description: string index Ord(description) read GetString write SetString;
-    property PaymentMethod: string index Ord(payment_method) read GetString write SetString;
-  end;
-
-  TpsRefundParams = class(TpsBaseParams)
-  public
-    property Amount: integer index Ord(amount) read GetInteger write SetInteger;
-    property Charge: string index Ord(charge) read GetString write SetString;
-    property PaymentIntent: string index Ord(payment_intent) read GetString write SetString;
-    property Reason: string index Ord(reason) read GetString write SetString;
-  end;
-
-  TpsCreatePaymentIntentParams = class(TpsBaseParams)
-  private
-    FPaymentMethodTypes: TpsPaymentMethodsTypes;
-    FFutureUsage: TpsFutureUsage;
-  public
-    procedure PopulateStrings(AStrings: TStrings); override;
-    property Description: string index Ord(description) read GetString write SetString;
-    property Amount: integer index Ord(amount) read GetInteger write SetInteger;
-    property ApplicationFeeAmount: integer index(application_fee_amount) read GetInteger write SetInteger;
-    property Currency: string index Ord(currency) read GetString write SetString;
-    property PaymentMethods: TpsPaymentMethodsTypes read FPaymentMethodTypes write FPaymentMethodTypes;
-    property FutureUsage: TpsFutureUsage read FFutureUsage write FFutureUsage;
-  end;
-
-
-  TpsUpdateCustomerParams = class(TpsBaseParams)
-  public
-    property Name: string index Ord(name) read GetString write SetString;
-    property Email: string index Ord(email) read GetString write SetString;
-    property Description: string index Ord(description) read GetString write SetString;
-  end;
-
-  TpsCreateCustomerParams = class(TpsUpdateCustomerParams)
-  public
-    property Name: string index Ord(name) read GetString write SetString;
-    property Description: string index Ord(description) read GetString write SetString;
-    property Email: string index Ord(email) read GetString write SetString;
-  end;
-
-  TpsCheckoutLineItem = class
-    FCurrency: TpsCurrency;
-    FDescription: string;
-    FPriceID: string;
-    FAmount: integer;
-    FQty: integer;
-    FTaxID: string;
-    FRecurring: TpsRecurring;
-  end;
-
-  TpsCheckoutLineItemList = class(TObjectList<TpsCheckoutLineItem>)
-  private
-    FCurrency: TpsCurrency;
-  public
-    constructor Create(ACurrency: TpsCurrency); virtual;
+  
+  IpsBaseParams = interface
+    ['{641C7ADD-BD13-4546-9BFA-500BEBE2FC5D}']
+    function GetAsString: string;
     procedure PopulateStrings(AStrings: TStrings);
-    procedure AddLineItem(ADesc: string; AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring); overload;
-    procedure AddLineItem(APriceID: string; AQty: integer; ATaxID: string; ARecurring: TpsRecurring); overload;
+    property AsString: string read GetAsString;
   end;
 
-  TpsCreateCheckoutParams = class(TpsBaseParams)
-  private
-    FLineItems: TpsCheckoutLineItemList;
-    FPaymentMethodTypes: TpsPaymentMethodsTypes;
-    function GetMode: TpsCheckoutMode;
-    procedure SetMode(const AValue: TpsCheckoutMode);
+  IpsBaseParamsWithMetaData = interface(IpsBaseParams)
+    ['{95E7941F-8945-456A-B8C0-566BA36FB71F}']
+    function GetMetadata: IpsMetadata;
+    property MetaData: IpsMetadata read GetMetaData;
+  end;
+
+  IpsUpdateChargeParams = interface(IpsBaseParamsWithMetaData)
+    ['{AB596017-6B83-4B2D-B819-39406DEBC2FF}']
+    function GetDescription: string;
+    procedure SetDescription(const Value: string);
+    property Description: string read GetDescription write SetDescription;
+  end;
+
+  IpsCreateChargeParams = interface(IpsUpdateChargeParams)
+    ['{E79EB463-E9BB-49C6-9556-C23B6CEB7179}']
+    function GetAmount: integer;
+    function GetApplicationFeeAmount: integer;
+    function GetConfirm: Boolean;
     function GetCurrency: TpsCurrency;
+    function GetCustomer: string;
+    function GetPaymentMethod: string;
+    procedure SetAmount(const Value: integer);
+    procedure SetApplicationFeeAmount(const Value: integer);
+    procedure SetConfirm(const Value: Boolean);
     procedure SetCurrency(const Value: TpsCurrency);
-  public
-    constructor Create(ACurrency: TpsCurrency); reintroduce;
-    destructor Destroy; override;
-    procedure PopulateStrings(AStrings: TStrings); override;
-    property ApplicationFeeAmount: integer index Ord(application_fee_amount) read GetInteger write SetInteger;
-    property CustomerEmail: string index Ord(customer_email) read GetString write SetString;
+    procedure SetCustomer(const Value: string);
+    procedure SetPaymentMethod(const Value: string);
+    property Amount: integer read GetAmount write SetAmount;
+    property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
+    property Confirm: Boolean read GetConfirm write SetConfirm;
+    property Currency: TpsCurrency read GetCurrency write SetCurrency;
+    property Customer: string read GetCustomer write SetCustomer;
+    property PaymentMethod: string read GetPaymentMethod write SetPaymentMethod;
+  end;
+
+  IpsCreateRefundParams = interface(IpsBaseParamsWithMetaData)
+    ['{E1CACBF3-570E-4DB0-AF6F-BCBFDE21ED68}']
+    function GetAmount: integer;
+    function GetCharge: string;
+    function GetReason: string;
+    procedure SetAmount(const Value: integer);
+    procedure SetCharge(const Value: string);
+    procedure SetReason(const Value: string);
+    property Amount: integer read GetAmount write SetAmount;
+    property Charge: string read GetCharge write SetCharge;
+    property Reason: string read GetReason write SetReason;
+  end;
+
+  IpsAddressParams = interface(IpsBaseParams)
+    ['{97631BE3-F828-4B6C-A427-4D7D9DDC199B}']
+    function GetCity: string;
+    procedure SetCity(const Value: string);
+    property City: string read GetCity write SetCity;
+  end;
+
+  IpsCompanyParams = interface(IpsBaseParams)
+    ['{6C4EBA25-CB5F-4084-9408-7FB85DFA9592}']
+    function GetName: string;
+    function GetAddress: IpsAddressParams;
+    procedure SetName(const Value: string);
+    property Name: string read GetName write SetName;
+    property Address: IpsAddressParams read GetAddress;
+  end;
+
+  IpsUpdateAccountParams = interface(IpsBaseParamsWithMetadata)
+    ['{1F59D6F4-35C5-4594-BA5B-14C35381C45E}']
+    function GetBusinessType: string;
+    function GetEmail: string;
+    function GetCompany: IpsCompanyParams;
+    procedure SetBusinessType(const Value: string);
+    procedure SetEmail(const Value: string);
+    property BusinessType: string read GetBusinessType write SetBusinessType;
+    property Email: string read GetEmail write SetEmail;
+    property Company: IpsCompanyParams read GetCompany;
+  end;
+
+  IpsCreateAccountParams = interface(IpsUpdateAccountParams)
+    ['{EB2C81BF-C96B-4656-ABE6-47CFB1EC87BE}']
+  end;
+
+  IpsUpdateCustomerParams = interface(IpsBaseParamsWithMetadata)
+    ['{2C4074A5-C529-488E-B451-266819193B4B}']
+    function GetDescription: string;
+    function GetName: string;
+    function GetEmail: string;
+    procedure SetDescription(const Value: string);
+    procedure SetName(const Value: string);
+    procedure SetEmail(const Value: string);
+    property Description: string read GetDescription write SetDescription;
+    property Name: string read GetName write SetName;
+    property Email: string read GetEmail write SetEmail;
+  end;
+
+  IpsCheckoutLineItem = interface
+    ['{FEA2035B-1C8D-400F-9568-FA868CA523AF}']
+    function GetAmount: integer;
+    function GetCurrency: TpsCurrency;
+    function GetDescription: string;
+    function GetPriceID: string;
+    function GetQty: integer;
+    function GetRecurring: TpsRecurring;
+    function GetTaxID: string;
+    procedure SetAmount(const Value: integer);
+    procedure SetCurrency(const Value: TpsCurrency);
+    procedure SetDescription(const Value: string);
+    procedure SetPriceID(const Value: string);
+    procedure SetQty(const Value: integer);
+    procedure SetRecurring(const Value: TpsRecurring);
+    procedure SetTaxID(const Value: string);
+    property Amount: integer read GetAmount write SetAmount;
+    property Currency: TpsCurrency read GetCurrency write SetCurrency;
+    property Description: string read GetDescription write SetDescription;
+    property Qty: integer read GetQty write SetQty;
+    property Recurring: TpsRecurring read GetRecurring write SetRecurring;
+    property PriceID: string read GetPriceID write SetPriceID;
+    property TaxID: string read GetTaxID write SetTaxID;
+  end;
+
+  IpsCheckoutLineItems = interface
+    ['{CB18B2B8-C47C-44F3-8CB5-A8ED9C9E1A54}']
+    function AddLineItem(ADescription: string; AQty: integer; APence: integer; const ATaxRate: string = ''; const ARecurring: TpsRecurring = None): IpsCheckoutLineItem; overload;
+    function AddLineItem(APriceID: string; AQty: integer; const ATaxRate: string = ''): IpsCheckoutLineItem; overload;
+    procedure PopulateStrings(AStrings: TStrings);
+  end;
+
+  IpsCreateCheckoutParams = interface(IpsBaseParamsWithMetaData)
+    ['{942DADE1-A2C6-4C59-95C9-14AAB1F4FE76}']
+    function GetApplicationFeeAmount: integer;
+    function GetMode: TpsCheckoutMode;
+    function GetCurrency: TpsCurrency;
+    function GetCustomerEmail: string;
+    function GetPaymentMethods: TpsPaymentMethodsTypes;
+    function GetCancelUrl: string;
+    function GetSuccessUrl: string;
+    function GetLineItems: IpsCheckoutLineItems;
+    procedure SetMode(const Value: TpsCheckoutMode);
+    procedure SetCurrency(const Value: TpsCurrency);
+    procedure SetCustomerEmail(const Value: string);
+    procedure SetPaymentMethods(const Value: TpsPaymentMethodsTypes);
+    procedure SetCancelUrl(const Value: string);
+    procedure SetSuccessUrl(const Value: string);
+    procedure SetApplicationFeeAmount(const Value: integer);
+    property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
     property Mode: TpsCheckoutMode read GetMode write SetMode;
     property Currency: TpsCurrency read GetCurrency write SetCurrency;
-    property PaymentMethods: TpsPaymentMethodsTypes read FPaymentMethodTypes write FPaymentMethodTypes;
-    property PriceID: string index Ord(price_id) read GetString write SetString;
-    property SuccessUrl: string index Ord(success_url) read GetString write SetString;
-    property CancelUrl: string index Ord(cancel_url) read GetString write SetString;
-    property LineItems: TpsCheckoutLineItemList read FLineItems;
+    property CustomerEmail: string read GetCustomerEmail write SetCustomerEmail;
+    property PaymentMethods: TpsPaymentMethodsTypes read GetPaymentMethods write SetPaymentMethods;
+    property CancelUrl: string read GetCancelUrl write SetCancelUrl;
+    property SuccessUrl: string read GetSuccessUrl write SetSuccessUrl;
+    property LineItems: IpsCheckoutLineItems read GetLineItems;
   end;
 
-  IpsPaymentIntent = interface
+  IpsCreatePaymentIntentParams = interface(IpsBaseParamsWithMetaData)
+    ['{61777E17-66F7-4A7B-A289-1F5B35B90C67}']
+    function GetApplicationFeeAmount: integer;
+    function GetConfirm: Boolean;
+    function GetCurrency: TpsCurrency;
+    function GetCustomer: string;
+    function GetPaymentMethod: string;
+    procedure SetApplicationFeeAmount(const Value: integer);
+    procedure SetConfirm(const Value: Boolean);
+    procedure SetCurrency(const Value: TpsCurrency);
+    procedure SetCustomer(const Value: string);
+    procedure SetPaymentMethod(const Value: string);
+    property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
+    property Confirm: Boolean read GetConfirm write SetConfirm;
+    property Currency: TpsCurrency read GetCurrency write SetCurrency;
+    property Customer: string read GetCustomer write SetCustomer;
+    property PaymentMethod: string read GetPaymentMethod write SetPaymentMethod;
+  end;
+
+  IpsPaymentIntent = interface(IpsBaseObjectWithMetaData)
     ['{2757C336-B837-4090-B6DF-449DE58F286D}']
     function GetAmount: integer;
     function GetApplicationFee: integer;
@@ -164,7 +272,6 @@ type
     function GetMetaData: IpsMetadata;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
-
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TJsonObject); overload;
     property MetaData: IpsMetadata read GetMetaData;
@@ -177,7 +284,7 @@ type
     property PaymentMethod: string read GetPaymentMethod;
   end;
 
-  IpsSetupIntent = interface
+  IpsSetupIntent = interface(IpsBaseObjectWithMetaData)
     ['{A6B0F997-03DC-43EB-A698-97FBEE4E701D}']
     function GetID: string;
     function GetClientSecret: string;
@@ -189,7 +296,7 @@ type
     property PaymentMethod: string read GetPaymentMethod;
   end;
 
-  IpsPaymentMethod = interface
+  IpsPaymentMethod = interface(IpsBaseObjectWithMetaData)
     ['{FC786B81-180B-4187-88D0-7C5BA1C81578}']
     function GetID: string;
     function GetCustomer: string;
@@ -210,7 +317,7 @@ type
     property Json: string read GetJson;
   end;
 
-  IpsCheckoutSession = interface
+  IpsCheckoutSession = interface(IpsBaseObjectWithMetaData)
     ['{3CB53C71-B7FE-4127-9E83-96BA40E5120E}']
     function GetID: string;
     function GetCreated: TDateTime;
@@ -229,7 +336,6 @@ type
     procedure SetStatus(const Value: string);
     procedure SetUrl(const Value: string);
 
-    procedure LoadFromJson(AData: string);
     procedure Clear;
     property ID: string read GetID write SetID;
     property Created: TDateTime read GetCreated;
@@ -240,13 +346,8 @@ type
     property PaymentStatus: string read GetPaymentStatus write SetPaymentStatus;
     property Metadata: IpsMetadata read GetMetadata;
     property Json: string read GetJson write SetJson;
-  end;
-
-  TpsListParamsDateFilter = record
-    LessThan: TDateTime;
-    LessThanOrEqual: TDateTime;
-    GreaterThanOrEqual: TDateTime;
-    GreaterThan: TDateTime;
+    procedure LoadFromJson(AData: string);
+    property Url: string read GetUrl;
   end;
 
   IpsChargeListOptions = interface
@@ -268,7 +369,7 @@ type
     property Query: string read GetQuery write SetQuery;
   end;
 
-  IpsCharge = interface
+  IpsCharge = interface(IpsBaseObjectWithMetaData)
     ['{121E1B25-253F-4CED-89D4-295166916424}']
     function GetID: string;
     function GetAmount: integer;
@@ -283,7 +384,8 @@ type
     function GetStatus: string;
     function GetPaymentIntentID: string;
     function GetMetaData: IpsMetaData;
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: string); overload;
     property Description: string read GetDescription;
     property ID: string read GetID;
     property Json: string read GetJson;
@@ -299,7 +401,7 @@ type
     property MetaData: IpsMetaData read GetMetaData;
   end;
 
-  TpsChargeList = class(TList<IpsCharge>);
+
 
 
   IpsCustomer = interface
@@ -334,424 +436,108 @@ type
     function GetPdfUrl: string;
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TJsonObject); overload;
-
     property ID: string read GetID;
     property PdfUrl: string read GetPdfUrl;
-
     property Json: string read GetJson;
   end;
 
-  TpsInvoiceList = class(TList<IpsInvoice>);
-
-
-  IpsAccount = interface
+  IpsAccount = interface(IpsBaseObjectWithMetaData)
     ['{748FD42C-EBDA-4DE3-A55F-E304E4797EA1}']
     function GetChargesEnabled: Boolean;
     function GetID: string;
     function GetJson: string;
-    function GetMetaData: IpsMetadata;
     function GetName: string;
     procedure LoadFromJson(AJson: string);
     property ID: string read GetID;
     property ChargesEnabled: Boolean read GetChargesEnabled;
     property Name: string read GetName;
     property Json: string read GetJson;
-    property MetaData: IpsMetaData read GetMetaData;
   end;
-
 
   IPasStripe = interface
     ['{2E285C68-FBCB-4C38-96EA-13EAF8C6B7B1}']
     function GetAccountID: string;
     function GetAccount: IpsAccount;
-    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
+    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount; overload;
+    function CreateAccount(AParams: IpsCreateAccountParams): IpsAccount; overload;
+
+    function UpdateAccount(AId: string; Params: IpsUpdateAccountParams): IpsAccount;
+
     function TestCredentials: Boolean;
     function GetLastError: string;
-
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
     function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
-
-
-    function CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
-    function UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
+    function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
+    function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
-
-
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
     function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
     function CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
-
-
     function GetSetupIntent(ASetupIntentID: string): IpsSetupIntent;
     function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
     function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
     function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
-
-
     function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
     function Getcustomer(AID: string): IpsCustomer;
-    function UpdateCustomer(AID: string; AParams: TpsUpdateCustomerParams): IpsCustomer;
+    function UpdateCustomer(AID: string; AParams: IpsUpdateCustomerParams): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
-
     function GetPaymentMethod(AID: string): IpsPaymentMethod;
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
     function GetPaymentMethods(ACustID: string): string;
-
-
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
-
-
-    function GenerateCheckoutSession(AParams: TpsCreateCheckoutParams): IpsCheckoutSession;
-
+    function GenerateCheckoutSession(AParams: IpsCreateCheckoutParams): IpsCheckoutSession;
     function GetLoginLink(AAccount: string): string;
-
     function GetInvoice(AID: string): IpsInvoice;
-
-
     property AccountID: string read GetAccountID;
     property LastError: string read GetLastError;
   end;
 
-  TpsFactory = class
-  public
-    class function PasStripe(ASecretKey, AAccount: string): IPasStripe;
-    class function Account: IpsAccount;
-    class function Metadata: IpsMetadata;
-    class function PaymentMethod: IpsPaymentMethod;
-    class function Customer: IpsCustomer;
-    class function Charge: IpsCharge;
-    class function ChargeListOptions: IpsChargeListOptions;
-    class function Invoice: IpsInvoice;
-    class function InvoiceList: TpsInvoiceList;
+  IpsFactory = interface
+    ['{8E62ED42-EE6C-470B-A1D3-D0AB04483E51}']
+    function PasStripe(ASecretKey: string; const AAccount: string = ''): IPasStripe;
+    function Account: IpsAccount;
+    function PaymentMethod: IpsPaymentMethod;
+    function Customer: IpsCustomer;
+    function Charge: IpsCharge;
+    function ChargeList: TpsChargeList;
+    function ChargeListOptions: IpsChargeListOptions;
+    function Invoice: IpsInvoice;
+    function InvoiceList: TpsInvoiceList;
+    function PaymentIntent: IpsPaymentIntent;
+    function SetupIntent: IpsSetupIntent;
+    function CheckoutSession: IpsCheckoutSession;
 
-    class function PaymentIntent: IpsPaymentIntent;
-    class function SetupIntent: IpsSetupIntent;
-    class function CheckoutSession: IpsCheckoutSession;
+    function CreateAccountParams: IpsCreateAccountParams;
+    function CreateChargeParams(AAmount: integer; ACurrency: TpsCurrency): IpsCreateChargeParams;
+    function CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): IpsCreateCheckoutParams;
+    function CreateRefundParams: IpsCreateRefundParams;
 
-
-    class function CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): TpsCreateCheckoutParams;
-
-
-    class function CreateChargeParams(AAmount: integer; ACurrency: string): TpsCreateChargeParams;
-    class function UpdateChargeParams: TpsUpdateChargeParams;
-
-    class function CreateCustomerParams: TpsCreateCustomerParams;
-    class function UpdateCustomerParams: TpsUpdateCustomerParams;
-
-    class function CreatePaymentIntentParams: TpsCreatePaymentIntentParams;
-
-    class function CreateRefundParams: TpsRefundParams;
+    function UpdateAccountParams: IpsUpdateAccountParams;
+    function UpdateChargeParams: IpsUpdateChargeParams;
+    function UpdateCustomerParams: IpsUpdateCustomerParams;
+    function CreatePaymentIntentParams(AAmount: integer; ADesc: string; ACurrency: TpsCurrency): IpsCreatePaymentIntentParams;
   end;
 
+  function TpsFactory: IpsFactory;
 
 implementation
 
 uses
-  pasStripe.Core,
-  pasStripe.Account,
-  pasStripe.Metadata,
-  pasStripe.PaymentMethod,
-  pasStripe.Customer,
-  pasStripe.Charge,
-  pasStripe.Intents,
-  pasStripe.Checkout,
-  pasStripe.Invoice,
-  pasStripe.Utils,
-  pasStripe.Params;
-
-
-{ TpsBaseParams }
-
-constructor TpsBaseParams.Create;
-begin
-  FParams := TStringList.Create;
-end;
-
-destructor TpsBaseParams.Destroy;
-begin
-  FParams.Free;
-  inherited;
-end;
-
-function TpsBaseParams.GetBoolean(AParam: TpsParamName): Boolean;
-begin
-  Result := FParams.Values[ParamToString(AParam)].ToLower = 'true';
-end;
-
-function TpsBaseParams.GetInteger(AParam: TpsParamName): integer;
-begin
-  Result := StrToIntDef(GetString(AParam), 0);
-end;
-
-function TpsBaseParams.GetMetaData(AName: string): string;
-begin
-  Result := FParams.Values['metadata['+AName+']'];
-end;
-
-function TpsBaseParams.GetString(AParam: TpsParamName): string;
-begin
-  Result := FParams.Values[ParamToString(AParam)];
-end;
-
-procedure TpsBaseParams.PopulateStrings(AStrings: TStrings);
-begin
-  AStrings.Assign(FParams);
-end;
-
-procedure TpsBaseParams.SetBoolean(AParam: TpsParamName; const AValue: Boolean);
-begin
-  case AValue of
-    True: FParams.Values[ParamToString(AParam)] := 'true';
-    false: FParams.Values[ParamToString(AParam)] := 'false';
-  end;
-end;
-
-procedure TpsBaseParams.SetInteger(AParam: TpsParamName; const AValue: integer);
-begin
-  SetString(AParam, AValue.ToString);
-end;
-
-procedure TpsBaseParams.SetMetaData(AName, AValue: string);
-begin
-  FParams.Values['metadata['+AName+']'] := AValue;
-end;
-
-procedure TpsBaseParams.SetString(AParam: TpsParamName; const AValue: string);
-begin
-  FParams.Values[ParamToString(AParam)] := AValue;
-end;
-
-
-
-{ TpsFactory }
-
-class function TpsFactory.Account: IpsAccount;
-begin
-  Result := TpsAccount.Create;
-end;
-
-class function TpsFactory.Charge: IpsCharge;
-begin
-  Result := TpsCharge.Create;
-end;
-
-class function TpsFactory.ChargeListOptions: IpsChargeListOptions;
-begin
-  Result := TpsChargeListOptions.Create;
-end;
-
-class function TpsFactory.CreateChargeParams(AAmount: integer; ACurrency: string): TpsCreateChargeParams;
-begin
-  Result := TpsCreateChargeParams.Create;
-  Result.amount := AAmount;
-  Result.currency := ACurrency;
-end;
-
-class function TpsFactory.CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): TpsCreateCheckoutParams;
-begin
-  Result := TpsCreateCheckoutParams.Create(ACurrency);
-  Result.Mode := AMode;
-  Result.Currency := ACurrency;
-end;
-
-class function TpsFactory.CreateCustomerParams: TpsCreateCustomerParams;
-begin
-  Result := TpsCreateCustomerParams.Create;
-end;
-
-class function TpsFactory.CreatePaymentIntentParams: TpsCreatePaymentIntentParams;
-begin
-  Result := TpsCreatePaymentIntentParams.Create;
-end;
-
-class function TpsFactory.CreateRefundParams: TpsRefundParams;
-begin
-  Result := TpsRefundParams.Create;
-end;
-
-class function TpsFactory.UpdateChargeParams: TpsUpdateChargeParams;
-begin
-  Result := TpsUpdateChargeParams.Create;
-end;
-
-class function TpsFactory.CheckoutSession: IpsCheckoutSession;
-begin
-  Result := TpsCheckoutSession.Create;
-end;
-
-class function TpsFactory.Customer: IpsCustomer;
-begin
-  Result := TpsCustomer.Create;
-end;
-
-class function TpsFactory.UpdateCustomerParams: TpsUpdateCustomerParams;
-begin
-  Result := TpsUpdateCustomerParams.Create;
-end;
-
-class function TpsFactory.Invoice: IpsInvoice;
-begin
-  Result := TpsInvoice.Create;
-end;
-
-class function TpsFactory.InvoiceList: TpsInvoiceList;
-begin
-  Result := TpsInvoiceList.Create;
-end;
-
-class function TpsFactory.Metadata: IpsMetadata;
-begin
-  Result := TpsMetadata.Create;
-end;
-
-
-
-class function TpsFactory.PasStripe(ASecretKey, AAccount: string): IPasStripe;
-begin
-  Result := TPasStripe.Create(ASecretKey, AAccount);
-end;
-
-class function TpsFactory.PaymentIntent: IpsPaymentIntent;
-begin
-  Result := TpsPaymentIntent.Create;
-end;
-
-class function TpsFactory.PaymentMethod: IpsPaymentMethod;
-begin
-  Result := TpsPaymentMethod.Create;
-end;
-
-class function TpsFactory.SetupIntent: IpsSetupIntent;
-begin
-  Result := TpsSetupIntent.Create;
-end;
-
-
-{ TpsCreateCheckoutParams }
-
-constructor TpsCreateCheckoutParams.Create(ACurrency: TpsCurrency);
-begin
-  inherited Create;
-  FLineItems := TpsCheckoutLineItemList.Create(ACurrency);
-end;
-
-destructor TpsCreateCheckoutParams.Destroy;
-begin
-  FLineItems.Free;
-  inherited;
-end;
-
-function TpsCreateCheckoutParams.GetCurrency: TpsCurrency;
-begin
-  Result := StringToCurrency(GetString(TpsParamName.currency));
-end;
-
-function TpsCreateCheckoutParams.GetMode: TpsCheckoutMode;
-begin
-  Result := StringToCheckoutMode (GetString(TpsParamName.mode));
-end;
-
-
-procedure TpsCreateCheckoutParams.PopulateStrings(AStrings: TStrings);
-begin
-  inherited;
-  PaymentMethodsToStrings(FPaymentMethodTypes, AStrings);
-  FLineItems.PopulateStrings(AStrings);
-end;
-
-procedure TpsCreateCheckoutParams.SetCurrency(const Value: TpsCurrency);
-begin
-  SetString(TpsParamName.currency, CurrencyToString(Value));
-end;
-
-procedure TpsCreateCheckoutParams.SetMode(const AValue: TpsCheckoutMode);
-begin
-  SetString(TpsParamName.mode, CheckoutModeToString(AValue));
-end;
-
-
-{ TpsCheckoutLineItemList }
-
-procedure TpsCheckoutLineItemList.AddLineItem(ADesc: string;  AAmount, AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
-var
-  AItem: TpsCheckoutLineItem;
-begin
-  AItem := TpsCheckoutLineItem.Create;
-  AItem.FCurrency := FCurrency;
-  AItem.FDescription := ADesc;
-  AItem.FAMount := AAmount;
-  AItem.FQty := AQty;
-  AItem.FTaxID := ATaxID;
-  AItem.FRecurring := ARecurring;
-  Add(AItem);
-end;
-
-procedure TpsCheckoutLineItemList.AddLineItem(APriceID: string; AQty: integer; ATaxID: string; ARecurring: TpsRecurring);
-var
-  AItem: TpsCheckoutLineItem;
-begin
-  AItem := TpsCheckoutLineItem.Create;
-  AItem.FCurrency := FCurrency;
-  AItem.FPriceID := APriceID;;
-  AItem.FQty := AQty;
-  AItem.FTaxID := ATaxID;
-  AItem.FRecurring := ARecurring;
-  Add(AItem);
-end;
-
-constructor TpsCheckoutLineItemList.Create(ACurrency: TpsCurrency);
-begin
-  inherited Create(True);
-  FCurrency := ACurrency;
-end;
-
-procedure TpsCheckoutLineItemList.PopulateStrings(AStrings: TStrings);
-var
-  AItem: TpsCheckoutLineItem;
-  ICount: integer;
-begin
-  for ICount := 0 to Count-1 do
-  begin
-    AItem := Items[ICount];
-
-    if AItem.FPriceID <> '' then
-    begin
-      AStrings.Values['line_items['+ICount.ToString+'][price]'] := AItem.FPriceID;
-    end
-    else
-    begin
-      AStrings.Values['line_items['+ICount.ToString+'][price_data][unit_amount]'] := AItem.FAmount.ToString;
-      AStrings.Values['line_items['+ICount.ToString+'][price_data][product_data][name]'] := AItem.FDescription;
-      AStrings.Values['line_items['+ICount.ToString+'][price_data][currency]'] := CurrencyToString(AItem.FCurrency);
-      if AItem.FRecurring <> None then
-        AStrings.Values['line_items['+ICount.ToString+'][price_data][recurring][interval]'] := IntervalToString(AItem.FRecurring);
-    end;
-    AStrings.Values['line_items['+ICount.ToString+'][quantity]'] := AItem.FQty.ToString;
-    AStrings.Values['line_items['+ICount.ToString+'][tax_rates][]'] := AItem.FTaxID;
-
-
-  end;
-end;
-
-{ TpsCreatePaymentIntentParams }
-
-procedure TpsCreatePaymentIntentParams.PopulateStrings(AStrings: TStrings);
-begin
-  inherited;
-  PaymentMethodsToStrings(FPaymentMethodTypes, AStrings);
-  case FFutureUsage of
-    fuOnSession:  AStrings.Values['setup_future_usage'] := 'on_session';
-    fuOffSession: AStrings.Values['setup_future_usage'] := 'off_session';
-  end;
-end;
+  pasStripe.Factory;
 
 var
-  p: TpsParamName;
+  psInternalFactory: IpsFactory;
+
+function TpsFactory: IpsFactory;
+begin
+  Result := psInternalFactory;
+end;
+
 
 initialization
 
-  for p := Low(TpsParamName) to High(TpsParamName) do
-    ParamToString(p);
+  psInternalFactory := pasStripe.Factory.TpsFactory.Create;
+
 
 end.

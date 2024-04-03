@@ -20,98 +20,56 @@
 *                                                                              *
 *******************************************************************************}
 
-unit pasStripe.PaymentMethod;
+unit pasStripe.Refund;
 
 interface
 
-uses pasStripe, pasStripe.Base, pasStripe.Json;
+uses pasStripe, pasStripe.Params;
 
 type
-  TpsPaymentMethod = class(TpsBaseObjectWithMetadata, IpsPaymentMethod)
-  private
-    FID: string;
-    FCustomer: string;
-    FExpiryMonth: integer;
-    FExpiryYear: integer;
-    FBrand: string;
-    FLast4: string;
-    FJson: string;
-    function GetID: string;
-    function GetCustomer: string;
-    function GetBrand: string;
-    function GetExpiryMonth: integer;
-    function GetExpiryYear: integer;
-    function GetExpiryStr: string;
-    function GetLast4: string;
-    function GetJson: string;
+  TpsCreateRefundParams = class(TpsBaseParamsWithMetaData, IpsCreateRefundParams)
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    function GetAmount: integer;
+    function GetCharge: string;
+    function GetReason: string;
+
+    procedure SetAmount(const Value: integer);
+    procedure SetCharge(const Value: string);
+    procedure SetReason(const Value: string);
   end;
 
 implementation
 
-uses SysUtils, pasStripe.Constants, pasStripe.Params, System.JSON;
+{ TpsCreateRefundParams }
 
-{ TpsPaymentMethod }
-
-
-function TpsPaymentMethod.GetBrand: string;
+function TpsCreateRefundParams.GetAmount: integer;
 begin
-  Result := FBrand;
+  Result := GetInteger(amount);
 end;
 
-function TpsPaymentMethod.GetCustomer: string;
+function TpsCreateRefundParams.GetCharge: string;
 begin
-  Result := FCustomer;
+  Result := GetString(charge);
 end;
 
-function TpsPaymentMethod.GetExpiryMonth: integer;
+function TpsCreateRefundParams.GetReason: string;
 begin
-  Result := FExpiryMonth;
+  Result := GetString(reason);
 end;
 
-function TpsPaymentMethod.GetExpiryStr: string;
+procedure TpsCreateRefundParams.SetAmount(const Value: integer);
 begin
-  Result := FormatFloat('00', FExpiryMonth)+' / '+ FormatFloat('0000', FExpiryYear);
+  SetInteger(amount, Value);
 end;
 
-function TpsPaymentMethod.GetExpiryYear: integer;
+procedure TpsCreateRefundParams.SetCharge(const Value: string);
 begin
-  Result := FExpiryYear;
+  SetString(charge, Value);
 end;
 
-function TpsPaymentMethod.GetID: string;
+procedure TpsCreateRefundParams.SetReason(const Value: string);
 begin
-  Result := FID;
-end;
-
-function TpsPaymentMethod.GetJson: string;
-begin
-  Result := FJson;
-end;
-
-function TpsPaymentMethod.GetLast4: string;
-begin
-  Result := FLast4;
-end;
-
-procedure TpsPaymentMethod.LoadFromJson(AJson: TJsonObject);
-var
-  ACard: TJsonObject;
-begin
-  inherited;
-  FID := AJson.S[id];
-  if AJson.Types['customer'] = jvtString then FCustomer := AJson.S[customer];
-
-  if AJson.Contains('card') then
-  begin
-    ACard := AJson.O['card'];
-    FExpiryMonth := ACard.I[exp_month];
-    FExpiryYear := ACard.I[exp_year];
-    FBrand := ACard.S[brand];
-    FLast4 := ACard.S[last4];
-  end;
-  FJson := AJson.ToJSON;
+  SetString(reason, Value);
 end;
 
 end.

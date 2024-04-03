@@ -18,23 +18,19 @@ To use, add the pasStripe.pas file to your uses clause, then use the TpsFactory 
 procedure TForm1.btnCreateCheckoutSessionClick(Sender: TObject);
 var
   AStripe: IpasStripe;
-  AParams: TpsCreateCheckoutParams;
+  AParams: psCreateCheckoutParams;
   AUrl: string;
 begin
   AStripe := TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');
 
   AParams := TpsFactory.CreateCheckoutParams(cmPayment, scGbp);
-  try
-    AParams.CustomerEmail := 'john@smith.com';
-    AParams.PaymentMethods := [pmCard];
-    AParams.SuccessUrl := 'https://www.success_url.com';
-    AParams.CancelUrl := 'https://www.cancel_url.com';
-    AParams.LineItems.AddLineItem('Product 1', 500, 2, '', TpsRecurring.None);
-    AParams.LineItems.AddLineItem('Another product', 250, 3, '', TpsRecurring.None);
-    AUrl := AStripe.GenerateCheckoutSession(AParams).Url;
-  finally
-    AParams.Free;
-  end;
+  AParams.CustomerEmail := 'john@smith.com';
+  AParams.PaymentMethods := [pmCard];
+  AParams.SuccessUrl := 'https://www.success_url.com';
+  AParams.CancelUrl := 'https://www.cancel_url.com';
+  AParams.LineItems.AddLineItem('Product 1', 500, 2, '', TpsRecurring.None);
+  AParams.LineItems.AddLineItem('Another product', 250, 3, '', TpsRecurring.None);
+  AUrl := AStripe.GenerateCheckoutSession(AParams).Url;
 end;
 ```
 
@@ -48,7 +44,7 @@ begin
   AStripe := TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');
   if AStripe.TestCredentials then
   begin
-    AAccount := Stripe.GetAccount;
+    AAccount := AStripe.GetAccount;
     ShowMessage(AAccount.Name);
   end;
 end;
@@ -60,7 +56,6 @@ end;
 procedure TForm1.btnGetInvoiceUrl(Sender: TObject);
 var
   AStripe: IPasStripe;
-  ACharges: TpsChargeList;
   AInvoice: IpsInvoice;
 begin
   AStripe := TpsFactory.PasStripe('sk_test_fFt5YRlBI*********', 'acct_1O2AWuQ********');

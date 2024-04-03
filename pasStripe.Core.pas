@@ -1,8 +1,31 @@
+{*******************************************************************************
+*                                                                              *
+*  pasStripe - Stripe Interfaces for Delphi                                    *
+*                                                                              *
+*  https://github.com/gmurt/pasStripe                                          *
+*                                                                              *
+*  Copyright 2024 Graham Murt                                                  *
+*                                                                              *                                                                              *
+*  Licensed under the Apache License, Version 2.0 (the "License");             *
+*  you may not use this file except in compliance with the License.            *
+*  You may obtain a copy of the License at                                     *
+*                                                                              *
+*    http://www.apache.org/licenses/LICENSE-2.0                                *
+*                                                                              *
+*  Unless required by applicable law or agreed to in writing, software         *
+*  distributed under the License is distributed on an "AS IS" BASIS,           *
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    *
+*  See the License for the specific language governing permissions and         *
+*  limitations under the License.                                              *
+*                                                                              *
+*******************************************************************************}
+
 unit pasStripe.Core;
 
 interface
 
-uses pasStripe.Json, Classes, System.Generics.Collections, pasStripe, Net.HttpClient;
+uses pasStripe.Json, Classes, System.Generics.Collections, pasStripe,
+  Net.HttpClient, pasStripe.Params;
 
 type
   THttpVerb = (httpGet, httpPost, httpDelete);
@@ -19,10 +42,13 @@ type
     function HttpAction(AVerb: THttpVerb; AMethod: string; AUrlParams: string): IHTTPResponse; overload;
     function Get(AMethod: string; AParams: TStrings): string;
     function Post(AMethod: string; AUrlParams: TStrings): string; overload;
-    function Post(AMethod: string; AParams: TpsBaseParams): string; overload;
+    function Post(AMethod: string; AParams: IpsBaseParams): string; overload;
   protected
     function GetAccount: IpsAccount;
-    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
+    function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount; overload;
+    function CreateAccount(AParams: IpsCreateAccountParams): IpsAccount; overload;
+    function UpdateAccount(AId: string; AParams: IpsUpdateAccountParams): IpsAccount;
+
     function TestCredentials: Boolean;
     function CreateAccountSession(AAccount: string): string;
     function GetLoginLink(AAccount: string): string;
@@ -33,7 +59,7 @@ type
 
     function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
     function Getcustomer(AID: string): IpsCustomer;
-    function UpdateCustomer(AID: string; AParams: TpsUpdateCustomerParams): IpsCustomer;
+    function UpdateCustomer(AID: string; AParams: IpsUpdateCustomerParams): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
 
 
@@ -50,7 +76,7 @@ type
     function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
 
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
-    function CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
+    function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
     function GetCharges(const AOptions: IpsChargeListOptions = nil): TpsChargeList;
 
@@ -58,11 +84,11 @@ type
 
 
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
-    function UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
+    function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
 
     function ExpireSession(ASessionID: string): IpsCheckoutSession;
 
-    function GenerateCheckoutSession(AParams: TpsCreateCheckoutParams): IpsCheckoutSession;
+    function GenerateCheckoutSession(AParams: IpsCreateCheckoutParams): IpsCheckoutSession;
 
     function DeleteAccount(AAccount: string): Boolean;
     function GetData(AResource: string; const AParams: TStrings = nil): string;
@@ -74,11 +100,10 @@ type
 
   end;
 
-
-
 implementation
 
-uses SysUtils, DateUtils, Math, pasStripe.Utils, System.Json, System.NetEncoding, pasStripe.Constants;
+uses SysUtils, DateUtils, Math, pasStripe.Utils, System.Json, System.NetEncoding,
+  pasStripe.Constants;
 
 const
   C_DEFAULT_LIMIT = 100;
@@ -106,18 +131,12 @@ end;
 
 function TPasStripe.CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
 var
-  AParams: TStrings;
   AData: string;
 begin
   Result := TpsFactory.PaymentIntent;
-  AParams := TStringList.Create;
-  try
-    AData := Post(C_PAYMENT_INTENTS + '/' + APaymentIntentID+'/cancel', AParams);
-    if FLastError = '' then
-      Result.LoadFromJson(AData);
-  finally
-    AParams.Free;
-  end;
+  AData := Post(C_PAYMENT_INTENTS + '/' + APaymentIntentID+'/cancel', nil);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
 end;
 
 constructor TPasStripe.Create(ASecretKey, AAccount: string);
@@ -130,29 +149,23 @@ end;
 function TPasStripe.CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string;
   AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
 var
-  AParams: TpsCreatePaymentIntentParams;
+  AParams: IpsCreatePaymentIntentParams;
   AData: string;
 begin
   Result := TpsFactory.PaymentIntent;
-  AParams := TpsFactory.CreatePaymentIntentParams;
-  try
-    AParams.Amount := AAmountPence;
-    AParams.Description := ADesc;
+  AParams := TpsFactory.CreatePaymentIntentParams(AAmountPence, ADesc, StringToCurrency(ACurrency));
 
-    AParams.Currency := ACurrency;
-    AParams.PaymentMethods  := [TpsPaymentMethodType.pmCard];
+  //AParams.PaymentMethods  := [TpsPaymentMethodType.pmCard];
 
-    AParams.FutureUsage := fuOffSession;
-    if FAccount <> '' then
-    begin
-      // connected account
-      AParams.ApplicationFeeAmount := AApplicationFee;
-    end;
-    AData := Post(C_PAYMENT_INTENTS, AParams);
-    Result.LoadFromJson(AData);
-  finally
-    AParams.Free;
+  //AParams.FutureUsage := tfuOffSession;
+  if FAccount <> '' then
+  begin
+    // connected account
+    AParams.ApplicationFeeAmount := AApplicationFee;
   end;
+  AData := Post(C_PAYMENT_INTENTS, AParams);
+  Result.LoadFromJson(AData);
+
 end;
 
 function TPasStripe.DeleteAccount(AAccount: string): Boolean;
@@ -255,35 +268,36 @@ begin
   end;
 end;
 
-function TPasStripe.GenerateCheckoutSession(AParams: TpsCreateCheckoutParams): IpsCheckoutSession;
+function TPasStripe.GenerateCheckoutSession(AParams: IpsCreateCheckoutParams): IpsCheckoutSession;
 var
   AData: string;
-  AStrings: TStrings;
 begin
   Result := TpsFactory.CheckoutSession;
-  AStrings := TStringList.Create;
-  try
-    AParams.PopulateStrings(AStrings);
-    AData := Post('checkout/sessions', AStrings);
-    if FLastError = '' then
-      Result.LoadFromJson(AData);
-  finally
-    AStrings.Free;
-  end;
+  AData := Post('checkout/sessions', AParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
 end;
 
 
 function TPasStripe.Get(AMethod: string; AParams: TStrings): string;
 var
   AJson: TJsonObject;
+  AResult: string;
 begin
+  Result := '';
   FLastError := '';
-  AJson := TJsonObject.Create;
+  AJson := TJSONObject.Create;
   try
-    Result := HttpAction(httpGet, AMethod, AParams).ContentAsString;
-    AJson.FromJSON(Result);
-    if AJson.Contains(C_ERROR) then
-      FLastError := AJson.O[C_ERROR].S[TpsParamName.message];
+    AResult := HttpAction(httpGet, AMethod, nil).ContentAsString;
+    AJson.FromJSON(AResult);
+    FLastError := AJson.O[C_ERROR].S[&message];
+    if FLastError = '' then
+    begin
+      Result := AResult;
+
+    end
+    else
+      raise Exception.Create(FLastError);
   finally
     AJson.Free;
   end;
@@ -383,6 +397,26 @@ begin
   end;
 end;
 
+function TPasStripe.CreateAccount(AParams: IpsCreateAccountParams): IpsAccount;
+var
+  AResponse: string;
+begin
+  Result := TpsFactory.Account;
+  AResponse := Post(C_ACCOUNTS, AParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AResponse);
+end;
+
+function TpasStripe.UpdateAccount(AId: string; AParams: IpsUpdateAccountParams): IpsAccount;
+var
+  AResponse: string;
+begin
+  Result := TpsFactory.Account;
+  AResponse := Post(C_ACCOUNTS+'/'+AId, AParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AResponse);
+end;
+
 function TPasStripe.CreateAccountSession(AAccount: string): string;
 var
   AData: string;
@@ -416,13 +450,18 @@ begin
     AJson.FromJSON(AResult);
     FLastError := AJson.O[C_ERROR].S[&message];
     if FLastError = '' then
+    begin
       Result := AResult;
+    end
+    else
+      raise Exception.Create(FLastError);
+
   finally
     AJson.Free;
   end;
 end;
 
-function TPasStripe.Post(AMethod: string; AParams: TpsBaseParams): string;
+function TPasStripe.Post(AMethod: string; AParams: IpsBaseParams): string;
 var
   AUrlParams: TStrings;
 begin
@@ -438,18 +477,14 @@ end;
 
 function TPasStripe.RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
 var
-  AParams: TpsRefundParams;
+  AParams: IpsCreateRefundParams;
 begin
   AParams := TpsFactory.CreateRefundParams;
-  try
-    AParams.Amount := AAmount;
-    AParams.Charge := AChargeID;
-    AParams.Reason := AReason;
-    Post(C_REFUNDS, AParams);
-    Result := FLastError = '';
-  finally
-    AParams.Free;
-  end;
+  AParams.Amount := AAmount;
+  AParams.Charge := AChargeID;
+  AParams.Reason := AReason;
+  Post(C_REFUNDS, AParams);
+  Result := FLastError = '';
 end;
 
 procedure TPasStripe.SaveCustomer(AID: string; ANameValues: TStrings);
@@ -467,64 +502,41 @@ begin
    Result := AAccount.ID <> '';
 end;
 
-function TPasStripe.UpdateCharge(AChargeID: string; AChargeParams: TpsUpdateChargeParams): IpsCharge;
+function TPasStripe.UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
 var
   AData: string;
-  AStrings: TStrings;
+begin
+  Result := TpsFactory.Charge;
+  AData := Post('charges/' + AChargeID, AChargeParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
+end;
+
+function TPasStripe.UpdateCustomer(AID: string; AParams: IpsUpdateCustomerParams): IpsCustomer;
+var
+  AData: string;
+begin
+  Result := TpsFactory.Customer;
+  AData := Post(C_CUSTOMERS + '/' + AID, AParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
+end;
+
+
+function TPasStripe.CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
+var
   AJson: TJsonObject;
-begin
-  AStrings := TStringList.Create;
-  AJson := TJsonObject.Create;
-  try
-    AChargeParams.PopulateStrings(AStrings);
-    AData := Post('charges/' + AChargeID, AStrings);
-    AJson.FromJSON(AData);
-    Result.LoadFromJson(AJson);
-  finally
-    AStrings.Free;
-    AJson.Free;
-  end;
-end;
-
-function TPasStripe.UpdateCustomer(AID: string; AParams: TpsUpdateCustomerParams): IpsCustomer;
-var
-  AData: string;
-  AUrlParams: TStrings;
-begin
-  AUrlParams := TStringList.Create;
-  try
-    AParams.PopulateStrings(AUrlParams);
-
-    Result := TpsFactory.Customer;
-    AData := Post(C_CUSTOMERS + '/' + AID, AUrlParams);
-    if FLastError = '' then
-      Result.LoadFromJson(AData);
-  finally
-    AUrlParams.Free;
-  end;
-end;
-
-function TPasStripe.CreateCharge(AChargeParams: TpsCreateChargeParams): IpsCharge;
-var
-  AParams: TStrings;
-   AJson: TJsonObject;
   AResult: string;
 begin
   Result := TpsFactory.Charge;
-
   AJson := TJsonObject.Create;
-  AParams := TStringList.Create;
   try
-    AChargeParams.PopulateStrings(AParams);
-    AResult := Post(C_PAYMENT_INTENTS, AParams);
-    AJson.FromJSON(AResult);
+    AResult := Post(C_PAYMENT_INTENTS, AChargeParams);
     if FLastError = '' then
-      Result.LoadFromJson(AJson.O['charges'].A['data'].Items[0] as TJSONObject);
+      Result.LoadFromJson(AResult);
   finally
-    AParams.Free;
     AJson.Free;
   end;
-
 end;
 
 function TPasStripe.GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
@@ -564,7 +576,7 @@ var
   ICount: integer;
   ALimit: integer;
 begin
-  Result := TpsChargeList.Create;
+  Result := TpsFactory.ChargeList;
   AStartAfter := '';
   AJson := TJsonObject.Create;
   AParams := TStringList.Create;
@@ -620,11 +632,11 @@ begin
 end;
 
 function TPasStripe.CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
-var
+{var
   AParams: TpsCreateCustomerParams;
-  AJson: string;
+  AJson: string;   }
 begin
-  Result := TpsFactory.Customer;
+ { Result := TpsFactory.Customer;
   AParams := TpsFactory.CreateCustomerParams;
   try
     AParams.Name := AName;
@@ -643,7 +655,7 @@ begin
     Result.LoadFromJson(AJson);
   finally
     AParams.Free;
-  end;
+  end; }
 end;
 
 function TPasStripe.Getcustomer(AID: string): IpsCustomer;
@@ -777,5 +789,7 @@ begin
     AParams.Free;
   end;
 end;
+
+{ TpsBaseObjectWithMetadata }
 
 end.

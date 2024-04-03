@@ -20,98 +20,109 @@
 *                                                                              *
 *******************************************************************************}
 
-unit pasStripe.PaymentMethod;
+unit pasStripe.Base;
 
 interface
 
-uses pasStripe, pasStripe.Base, pasStripe.Json;
+uses pasStripe, Classes, System.Generics.Collections, SysUtils, pasStripe.Json;
 
 type
-  TpsPaymentMethod = class(TpsBaseObjectWithMetadata, IpsPaymentMethod)
-  private
-    FID: string;
-    FCustomer: string;
-    FExpiryMonth: integer;
-    FExpiryYear: integer;
-    FBrand: string;
-    FLast4: string;
-    FJson: string;
-    function GetID: string;
-    function GetCustomer: string;
-    function GetBrand: string;
-    function GetExpiryMonth: integer;
-    function GetExpiryYear: integer;
-    function GetExpiryStr: string;
-    function GetLast4: string;
-    function GetJson: string;
+  TpsBaseObject = class(TInterfacedObject, IpsBaseObject)
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure Clear; virtual; abstract;
+    procedure LoadFromJson(AJson: string); overload;
+    procedure LoadFromJson(AJson: TJsonObject); overload; virtual;
+
   end;
+
+  TpsBaseObjectWithMetadata = class(TpsBaseObject, IpsBaseObjectWithMetaData)
+  private
+    FMetaData: IpsMetadata;
+  protected
+    function GetMetadata: IpsMetadata;
+    procedure Clear; override;
+    procedure LoadFromJson(AJson: TJsonObject); overload; override;
+  public
+    constructor Create; virtual;
+  end;
+
+  TpsBaseList = class(TInterfacedObject)
+  private
+  protected
+    FList: TList;
+    function GetCount: integer;
+
+
+  public
+
+  end;
+
+
+
+
 
 implementation
 
-uses SysUtils, pasStripe.Constants, pasStripe.Params, System.JSON;
+uses pasStripe.MetaData;
 
-{ TpsPaymentMethod }
+{ TpsBaseObjectWithMetadata }
 
-
-function TpsPaymentMethod.GetBrand: string;
-begin
-  Result := FBrand;
-end;
-
-function TpsPaymentMethod.GetCustomer: string;
-begin
-  Result := FCustomer;
-end;
-
-function TpsPaymentMethod.GetExpiryMonth: integer;
-begin
-  Result := FExpiryMonth;
-end;
-
-function TpsPaymentMethod.GetExpiryStr: string;
-begin
-  Result := FormatFloat('00', FExpiryMonth)+' / '+ FormatFloat('0000', FExpiryYear);
-end;
-
-function TpsPaymentMethod.GetExpiryYear: integer;
-begin
-  Result := FExpiryYear;
-end;
-
-function TpsPaymentMethod.GetID: string;
-begin
-  Result := FID;
-end;
-
-function TpsPaymentMethod.GetJson: string;
-begin
-  Result := FJson;
-end;
-
-function TpsPaymentMethod.GetLast4: string;
-begin
-  Result := FLast4;
-end;
-
-procedure TpsPaymentMethod.LoadFromJson(AJson: TJsonObject);
-var
-  ACard: TJsonObject;
+procedure TpsBaseObjectWithMetadata.Clear;
 begin
   inherited;
-  FID := AJson.S[id];
-  if AJson.Types['customer'] = jvtString then FCustomer := AJson.S[customer];
+  FMetaData.Clear;
+end;
 
-  if AJson.Contains('card') then
-  begin
-    ACard := AJson.O['card'];
-    FExpiryMonth := ACard.I[exp_month];
-    FExpiryYear := ACard.I[exp_year];
-    FBrand := ACard.S[brand];
-    FLast4 := ACard.S[last4];
+constructor TpsBaseObjectWithMetadata.Create;
+begin
+  inherited;
+  FMetaData := TpsMetaData.Create;
+end;
+
+function TpsBaseObjectWithMetadata.GetMetadata: IpsMetadata;
+begin
+  Result := FMetaData;
+end;
+
+
+
+
+procedure TpsBaseObjectWithMetadata.LoadFromJson(AJson: TJsonObject);
+begin
+  inherited;
+  FMetaData.LoadFromJson(AJson.O['metadata']);
+end;
+
+
+{ TpsBaseList<T> }
+
+
+function TpsBaseList.GetCount: integer;
+begin
+  Result := FList.Count;
+end;
+
+
+
+
+{ TpsBaseObject }
+
+procedure TpsBaseObject.LoadFromJson(AJson: TJsonObject);
+begin
+  Clear;
+end;
+
+procedure TpsBaseObject.LoadFromJson(AJson: string);
+var
+  AObj: TJsonObject;
+begin
+  AObj := TJsonObject.Create;
+  try
+    AObj.FromJSON(AJson);
+    LoadFromJson(AObj);
+  finally
+    AObj.Free;
   end;
-  FJson := AJson.ToJSON;
 end;
 
 end.

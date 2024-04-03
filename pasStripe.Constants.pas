@@ -1,3 +1,25 @@
+{*******************************************************************************
+*                                                                              *
+*  pasStripe - Stripe Interfaces for Delphi                                    *
+*                                                                              *
+*  https://github.com/gmurt/pasStripe                                          *
+*                                                                              *
+*  Copyright 2024 Graham Murt                                                  *
+*                                                                              *                                                                              *
+*  Licensed under the Apache License, Version 2.0 (the "License");             *
+*  you may not use this file except in compliance with the License.            *
+*  You may obtain a copy of the License at                                     *
+*                                                                              *
+*    http://www.apache.org/licenses/LICENSE-2.0                                *
+*                                                                              *
+*  Unless required by applicable law or agreed to in writing, software         *
+*  distributed under the License is distributed on an "AS IS" BASIS,           *
+*  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.    *
+*  See the License for the specific language governing permissions and         *
+*  limitations under the License.                                              *
+*                                                                              *
+*******************************************************************************}
+
 unit pasStripe.Constants;
 
 interface
@@ -20,35 +42,6 @@ const
   C_REFUNDS               = 'refunds';
 
   C_SETUP_INTENTS         = 'setup_intents';
-
-{
-  C_ID              = 'id';
-  C_AMOUNT          = 'amount';
-  C_AMOUNT_RECEIVED = 'amount_received';
-  C_AMOUNT_REFUNDED = 'amount_refunded';
-  C_APPLICATION_FEE_AMOUNT = 'application_fee_amount';
-  C_BRAND           = 'brand';
-  C_CANCEL_URL      = 'cancel_url';
-  C_CHARGES_ENABLED = 'charges_enabled';
-  C_CLIENT_SECRET   = 'client_secret';
-  C_CREATED         = 'created';
-  C_CURRENCY        = 'currency';
-  C_CUSTOMER        = 'customer';
-  C_CUSTOMER_EMAIL  = 'customer_email';
-  C_DELETED         = 'deleted';
-  C_DESCRIPTION     = 'description';
-  C_EMAIL           = 'email';
-  C_ERROR           = 'error';
-  C_EXP_MONTH       = 'exp_month';
-  C_EXP_YEAR        = 'exp_year';
-  C_HAS_MORE        = 'has_more';
-  C_MESSAGE         = 'message';
-  C_MODE            = 'mode';
-  C_NAME            = 'name';
-  C_SUCCESS_URL     = 'success_url';
-  C_URL             = 'url';        }
-
-
 
 implementation
 
