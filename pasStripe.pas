@@ -45,17 +45,12 @@ type
   IpsBaseList<T> = interface(IInterface)
     ['{EB23D8A8-2FE4-4562-B64F-6B41D9DB116E}']
     function GetCount: integer;
+    function GetItem(AIndex: integer): T;
     function GetEnumerator: TList<T>.TEnumerator;
     function Add(const Value: T): Integer;
     property Count: integer read GetCount;
+    property Items[index: integer]: T read GetItem; default;
   end;
-
-
-  // list classes (this are not interfaces and therefore requie freeing after use.
-
-
-
-
 
 
   IpsMetaDataRecord = interface

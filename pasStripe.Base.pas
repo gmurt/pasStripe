@@ -53,6 +53,7 @@ type
   strict protected
     function Add(const Value: T): Integer;
     function GetCount: integer;
+    function GetItem(AIndex: integer): T;
   public
     constructor Create; virtual;
     destructor Destroy; override;
@@ -83,6 +84,11 @@ end;
 function TpsBaseList<T>.GetEnumerator: TList<T>.TEnumerator;
 begin
   Result := FList.GetEnumerator;
+end;
+
+function TpsBaseList<T>.GetItem(AIndex: integer): T;
+begin
+  Result := FList[AIndex];
 end;
 
 function TpsBaseList<T>.Add(const Value: T): Integer;
