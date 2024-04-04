@@ -24,7 +24,7 @@ unit pasStripe.Metadata;
 
 interface
 
-uses SysUtils, System.Generics.Collections, pasStripe.Json, pasStripe;
+uses Classes, SysUtils, System.Generics.Collections, pasStripe.Json, pasStripe;
 
 type
   TpsMetaDataRecord = class(TInterfacedObject, IpsMetaDataRecord)
@@ -48,6 +48,7 @@ type
     function FindMetaData(AName: string): IpsMetaDataRecord;
     function AddMetaData(AName, AValue: string): IpsMetaDataRecord;
     procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromStrings(AStrings: TStrings);
     procedure Enumerate(ACallback: TProc<IpsMetaDataRecord>);
     procedure Clear;
   public
@@ -138,6 +139,20 @@ begin
     AddMetaData(AMeta.JsonString.Value, AMeta.JsonValue.Value);
   end;
 
+end;
+
+procedure TpsMetaData.LoadFromStrings(AStrings: TStrings);
+var
+  ICount: integer;
+begin
+  Clear;
+  if AStrings <> nil then
+  begin
+    for ICount := 0 to AStrings.Count-1 do
+    begin
+      AddMetaData(AStrings.Names[ICount], AStrings.ValueFromIndex[ICount]);
+    end;
+  end;
 end;
 
 procedure TpsMetaData.SetValue(AName: string; const Value: string);

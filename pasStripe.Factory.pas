@@ -46,6 +46,8 @@ type
     function CreateAccountParams: IpsCreateAccountParams;
     function CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): IpsCreateCheckoutParams;
     function CreateChargeParams(AAmount: integer; ACurrency: TpsCurrency): IpsCreateChargeParams;
+    function CreateCustomerParams: IpsCreateCustomerParams;
+
     function CreatePaymentIntentParams(AAmount: integer; ADesc: string; ACurrency: TpsCurrency): IpsCreatePaymentIntentParams;
     function CreateRefundParams: IpsCreateRefundParams;
 
@@ -112,9 +114,17 @@ begin
   Result.Currency := ACurrency;
 end;
 
+function TpsFactory.CreateCustomerParams: IpsCreateCustomerParams;
+begin
+  Result := TpsCustomerParams.Create(nil);
+end;
+
 function TpsFactory.CreatePaymentIntentParams(AAmount: integer; ADesc: string; ACurrency: TpsCurrency): IpsCreatePaymentIntentParams;
 begin
   Result := TpsCreatePaymentIntentParams.Create(nil);
+  Result.Amount := AAmount;
+  Result.Currency := ACurrency;
+  Result.Description := ADesc;
 end;
 
 function TpsFactory.CreateRefundParams: IpsCreateRefundParams;
@@ -175,7 +185,7 @@ end;
 
 function TpsFactory.UpdateCustomerParams: IpsUpdateCustomerParams;
 begin
-  Result := TpsUpdateCustomerParams.Create(nil);
+  Result := TpsCustomerParams.Create(nil);
 end;
 
 end.

@@ -29,15 +29,21 @@ uses pasStripe, pasStripe.Base, pasStripe.Json, pasStripe.Params;
 type
   TpsCreatePaymentIntentParams = class(TpsBaseParamsWithMetaData, IpsCreatePaymentIntentParams)
   private
+    function GetAmount: integer;
     function GetApplicationFeeAmount: integer;
     function GetConfirm: Boolean;
     function GetCurrency: TpsCurrency;
     function GetCustomer: string;
+    function GetDescription: string;
+    function GetFutureUsage: TpsFutureUsage;
     function GetPaymentMethod: string;
+    procedure SetAmount(const Value: integer);
     procedure SetApplicationFeeAmount(const Value: integer);
     procedure SetConfirm(const Value: Boolean);
     procedure SetCurrency(const Value: TpsCurrency);
     procedure SetCustomer(const Value: string);
+    procedure SetDescription(const Value: string);
+    procedure SetFutureUsage(const Value: TpsFutureUsage);
     procedure SetPaymentMethod(const Value: string);
   end;
 
@@ -160,6 +166,11 @@ end;
 
 { TpsCreatePaymentIntentParams }
 
+function TpsCreatePaymentIntentParams.GetAmount: integer;
+begin
+  Result := GetInteger(amount);
+end;
+
 function TpsCreatePaymentIntentParams.GetApplicationFeeAmount: integer;
 begin
   Result := GetInteger(application_fee_amount);
@@ -180,9 +191,27 @@ begin
   Result := GetString(customer);
 end;
 
+function TpsCreatePaymentIntentParams.GetDescription: string;
+begin
+  Result := GetString(description);
+end;
+
+function TpsCreatePaymentIntentParams.GetFutureUsage: TpsFutureUsage;
+begin
+  if GetString(setup_future_usage) = 'off_session' then
+    Result := psOffSession
+  else
+    Result := psOnSession;
+end;
+
 function TpsCreatePaymentIntentParams.GetPaymentMethod: string;
 begin
   Result := GetString(payment_method);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetAmount(const Value: integer);
+begin
+  SetInteger(amount, Value);
 end;
 
 procedure TpsCreatePaymentIntentParams.SetApplicationFeeAmount(const Value: integer);
@@ -203,6 +232,19 @@ end;
 procedure TpsCreatePaymentIntentParams.SetCustomer(const Value: string);
 begin
   SetString(customer, Value);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetDescription(const Value: string);
+begin
+  SetString(description, Value);
+end;
+
+procedure TpsCreatePaymentIntentParams.SetFutureUsage(const Value: TpsFutureUsage);
+begin
+  case Value of
+    psOnSession: SetString(setup_future_usage, 'on_session');
+    psOffSession: SetString(setup_future_usage, 'off_session');
+  end;
 end;
 
 procedure TpsCreatePaymentIntentParams.SetPaymentMethod(const Value: string);

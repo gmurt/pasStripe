@@ -57,13 +57,15 @@ type
 
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
 
-    function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
+    function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer; overload;
+    function CreateCustomer(AParams: IpsCreateCustomerParams): IpsCustomer; overload;
     function Getcustomer(AID: string): IpsCustomer;
     function UpdateCustomer(AID: string; AParams: IpsUpdateCustomerParams): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
 
 
-    function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
+    function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent; overload;
+    function CreatePaymentIntent(AParams: IpsCreatePaymentIntentParams): IpsPaymentIntent; overload;
     function CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
 
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
@@ -155,9 +157,9 @@ begin
   Result := TpsFactory.PaymentIntent;
   AParams := TpsFactory.CreatePaymentIntentParams(AAmountPence, ADesc, StringToCurrency(ACurrency));
 
-  //AParams.PaymentMethods  := [TpsPaymentMethodType.pmCard];
+  AParams.FutureUsage := psOffSession;
 
-  //AParams.FutureUsage := tfuOffSession;
+  AParams.MetaData.LoadFromStrings(AMetaData);
   if FAccount <> '' then
   begin
     // connected account
@@ -167,6 +169,16 @@ begin
   Result.LoadFromJson(AData);
 
 end;
+
+function TPasStripe.CreatePaymentIntent(AParams: IpsCreatePaymentIntentParams): IpsPaymentIntent;
+var
+  AData: string;
+begin
+  Result := TpsFactory.PaymentIntent;
+  AData := Post(C_PAYMENT_INTENTS, AParams);
+  Result.LoadFromJson(AData);
+end;
+
 
 function TPasStripe.DeleteAccount(AAccount: string): Boolean;
 var
@@ -632,30 +644,30 @@ begin
 end;
 
 function TPasStripe.CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
-{var
-  AParams: TpsCreateCustomerParams;
-  AJson: string;   }
+var
+  AParams: IpsCreateCustomerParams;
+  AJson: string;
 begin
- { Result := TpsFactory.Customer;
+  Result := TpsFactory.Customer;
   AParams := TpsFactory.CreateCustomerParams;
-  try
-    AParams.Name := AName;
-    AParams.Description := ADescription;
-    AParams.Email := AEmail;
-    if AMeta <> nil then
-    begin
-      for var ICount := 0 to AMeta.Count - 1 do
-      begin
-        AParams.MetaData[AMeta.Names[ICount]] := AMeta.ValueFromIndex[ICount];
-      end;
-    end;
+  AParams.Name := AName;
+  AParams.Description := ADescription;
+  AParams.Email := AEmail;
 
-
-    AJson := Post(C_CUSTOMERS, AParams);
+  AParams.MetaData.LoadFromStrings(AMeta);
+  AJson := Post(C_CUSTOMERS, AParams);
+  if FLastError = '' then
     Result.LoadFromJson(AJson);
-  finally
-    AParams.Free;
-  end; }
+end;
+
+function TPasStripe.CreateCustomer(AParams: IpsCreateCustomerParams): IpsCustomer;
+var
+  AJson: string;
+begin
+  Result := TpsFactory.Customer;
+  AJson := Post(C_CUSTOMERS, AParams);
+  if FLastError = '' then
+    Result.LoadFromJson(AJson);
 end;
 
 function TPasStripe.Getcustomer(AID: string): IpsCustomer;
@@ -664,7 +676,8 @@ var
 begin
   Result := TpsFactory.Customer;
   AData := Get(C_CUSTOMERS + '/' + AID, nil);
-  Result.LoadFromJson(AData);
+  if FLastError = '' then
+    Result.LoadFromJson(AData);
 end;
 
 

@@ -44,16 +44,20 @@ type
     procedure LoadFromJson(AJson: TJsonObject); override;
   end;
 
-  TpsUpdateCustomerParams = class(TpsBaseParamsWithMetaData, IpsUpdateCustomerParams)
+  TpsCustomerParams = class(TpsBaseParamsWithMetaData, IpsCreateCustomerParams, IpsUpdateCustomerParams)
   protected
     function GetDescription: string;
     function GetName: string;
     function GetEmail: string;
+    function GetPaymentMethod: string;
+    function GetDefaultSource: string;
     procedure SetDescription(const Value: string);
     procedure SetName(const Value: string);
     procedure SetEmail(const Value: string);
-
+    procedure SetPaymentMethod(const Value: string);
+    procedure SetDefaultSource(const Value: string);
   end;
+
 
 implementation
 
@@ -95,36 +99,56 @@ begin
   //FMetaData.LoadFromJson(AJson.O['metadata']);
 end;
 
-{ TpsUpdateCustomerParams }
+{ TpsCustomerParams }
 
-function TpsUpdateCustomerParams.GetDescription: string;
+function TpsCustomerParams.GetDefaultSource: string;
+begin
+  Result := GetString(default_source);
+end;
+
+function TpsCustomerParams.GetDescription: string;
 begin
   Result := GetString(TpsParamName.description);
 end;
 
-function TpsUpdateCustomerParams.GetEmail: string;
+function TpsCustomerParams.GetEmail: string;
 begin
   Result := GetString(email);
 end;
 
-function TpsUpdateCustomerParams.GetName: string;
+function TpsCustomerParams.GetName: string;
 begin
   Result := GetString(name);
 end;
 
-procedure TpsUpdateCustomerParams.SetDescription(const Value: string);
+function TpsCustomerParams.GetPaymentMethod: string;
+begin
+  Result := GetString(payment_method);
+end;
+
+procedure TpsCustomerParams.SetDefaultSource(const Value: string);
+begin
+  SetString(default_source, Value);
+end;
+
+procedure TpsCustomerParams.SetDescription(const Value: string);
 begin
   SetString(TpsParamName.description, Value);
 end;
 
-procedure TpsUpdateCustomerParams.SetEmail(const Value: string);
+procedure TpsCustomerParams.SetEmail(const Value: string);
 begin
   SetString(email, Value);
 end;
 
-procedure TpsUpdateCustomerParams.SetName(const Value: string);
+procedure TpsCustomerParams.SetName(const Value: string);
 begin
   SetString(name, Value);
+end;
+
+procedure TpsCustomerParams.SetPaymentMethod(const Value: string);
+begin
+  SetString(payment_method, Value);
 end;
 
 end.

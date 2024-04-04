@@ -72,6 +72,7 @@ type
     procedure Clear;
     procedure Enumerate(ACallback: TProc<IpsMetaDataRecord>);
     procedure LoadFromJson(AJson: TJSONObject);
+    procedure LoadFromStrings(AStrings: TStrings);
     property Value[AName: string]: string read GetValue write SetValue; default;
   end;
 
@@ -173,18 +174,35 @@ type
     ['{EB2C81BF-C96B-4656-ABE6-47CFB1EC87BE}']
   end;
 
-  IpsUpdateCustomerParams = interface(IpsBaseParamsWithMetadata)
-    ['{2C4074A5-C529-488E-B451-266819193B4B}']
+
+  IpsCommonCustomerParams = interface(IpsBaseParamsWithMetadata)
+    ['{92ADF75A-B35E-43C9-938C-C4EAA38DB959}']
     function GetDescription: string;
     function GetName: string;
     function GetEmail: string;
+    function GetPaymentMethod: string;
     procedure SetDescription(const Value: string);
     procedure SetName(const Value: string);
     procedure SetEmail(const Value: string);
+    procedure SetPaymentMethod(const Value: string);
     property Description: string read GetDescription write SetDescription;
     property Name: string read GetName write SetName;
     property Email: string read GetEmail write SetEmail;
+    property PaymentMethod: string read GetPaymentMethod write SetPaymentMethod;
   end;
+
+  IpsUpdateCustomerParams = interface(IpsCommonCustomerParams)
+    ['{2C4074A5-C529-488E-B451-266819193B4B}']
+    function GetDefaultSource: string;
+    procedure SetDefaultSource(const Value: string);
+    property DefaultSource: string read GetDefaultSource write SetDefaultSource;
+  end;
+
+  IpsCreateCustomerParams = interface(IpsCommonCustomerParams)
+    ['{6F8DE7FD-A885-427D-9E61-A629B14DD2C5}']
+  end;
+
+
 
   IpsCheckoutLineItem = interface
     ['{FEA2035B-1C8D-400F-9568-FA868CA523AF}']
@@ -247,21 +265,30 @@ type
 
   IpsCreatePaymentIntentParams = interface(IpsBaseParamsWithMetaData)
     ['{61777E17-66F7-4A7B-A289-1F5B35B90C67}']
+    function GetAmount: integer;
     function GetApplicationFeeAmount: integer;
     function GetConfirm: Boolean;
     function GetCurrency: TpsCurrency;
     function GetCustomer: string;
+    function GetDescription: string;
+    function GetFutureUsage: TpsFutureUsage;
     function GetPaymentMethod: string;
+    procedure SetAmount(const Value: integer);
     procedure SetApplicationFeeAmount(const Value: integer);
     procedure SetConfirm(const Value: Boolean);
     procedure SetCurrency(const Value: TpsCurrency);
     procedure SetCustomer(const Value: string);
+    procedure SetDescription(const Value: string);
+    procedure SetFutureUsage(const Value: TpsFutureUsage);
     procedure SetPaymentMethod(const Value: string);
+    property Amount: integer read GetAmount write SetAmount;
     property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
     property Confirm: Boolean read GetConfirm write SetConfirm;
     property Currency: TpsCurrency read GetCurrency write SetCurrency;
     property Customer: string read GetCustomer write SetCustomer;
+    property Description: string read GetDescription write SetDescription;
     property PaymentMethod: string read GetPaymentMethod write SetPaymentMethod;
+    property FutureUsage: TpsFutureUsage read GetFutureUsage write SetFutureUsage;
   end;
 
   IpsPaymentIntent = interface(IpsBaseObjectWithMetaData)
@@ -478,7 +505,10 @@ type
     function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
-    function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent;
+
+    function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent; overload;
+    function CreatePaymentIntent(AParams: IpsCreatePaymentIntentParams): IpsPaymentIntent; overload;
+
     function GetPaymentIntent(AID: string): IpsPaymentIntent;
     function ConfirmSetupIntent(ASetupIntentID: string): IpsSetupIntent;
     function CancelPaymentIntent(APaymentIntentID: string): IpsPaymentIntent;
@@ -486,7 +516,8 @@ type
     function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
     function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
     function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
-    function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
+    function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer; overload;
+    function CreateCustomer(AParams: IpsCreateCustomerParams): IpsCustomer; overload;
     function Getcustomer(AID: string): IpsCustomer;
     function UpdateCustomer(AID: string; AParams: IpsUpdateCustomerParams): IpsCustomer;
     procedure SaveCustomer(AID: string; ANameValues: TStrings);
@@ -519,6 +550,7 @@ type
     function CreateAccountParams: IpsCreateAccountParams;
     function CreateChargeParams(AAmount: integer; ACurrency: TpsCurrency): IpsCreateChargeParams;
     function CreateCheckoutParams(AMode: TpsCheckoutMode; ACurrency: TpsCurrency): IpsCreateCheckoutParams;
+    function CreateCustomerParams: IpsCreateCustomerParams;
     function CreateRefundParams: IpsCreateRefundParams;
 
     function UpdateAccountParams: IpsUpdateAccountParams;

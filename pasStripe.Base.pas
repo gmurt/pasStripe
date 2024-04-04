@@ -115,20 +115,11 @@ begin
   Result := FMetaData;
 end;
 
-
-
-
 procedure TpsBaseObjectWithMetadata.LoadFromJson(AJson: TJsonObject);
 begin
   inherited;
   FMetaData.LoadFromJson(AJson.O['metadata']);
 end;
-
-
-{ TpsBaseList<T> }
-
-
-
 
 { TpsBaseObject }
 
