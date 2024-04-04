@@ -24,7 +24,7 @@ unit pasStripe.Utils;
 
 interface
 
-uses Classes, pasStripe, pasStripe.Constants, pasStripe.Params;
+uses Classes, pasStripe, pasStripe.Constants, pasStripe.ParamTypes;
 
 function ParamToString(AParam: TpsParamName): string;
 function PaymentMethodToString(APaymentMethod: TpsPaymentMethodType): string;

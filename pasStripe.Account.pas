@@ -56,13 +56,13 @@ type
     function GetJson: string;
     function GetName: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
 
 implementation
 
-uses pasStripe.Constants, System.Json;
+uses pasStripe.Constants, pasStripe.ParamTypes;
 
 { TpsAccount }
 
@@ -71,7 +71,7 @@ begin
   Result := FName;
 end;
 
-procedure TpsAccount.LoadFromJson(AJson: TJsonObject);
+procedure TpsAccount.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   Fjson := AJson.ToJson;

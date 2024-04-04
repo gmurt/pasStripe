@@ -24,8 +24,8 @@ unit pasStripe;
 
 interface
 
-uses Classes, SysUtils, System.Json, System.Generics.Collections,
-  pasStripe.Constants;
+uses Classes, SysUtils, System.Generics.Collections,
+  pasStripe.Constants, pasStripe.Json;
 
 type
   TpsPaymentMethodType = (pmDirectDebit, pmCard);
@@ -71,7 +71,7 @@ type
     function AddMetaData(AName, AValue: string): IpsMetaDataRecord;
     procedure Clear;
     procedure Enumerate(ACallback: TProc<IpsMetaDataRecord>);
-    procedure LoadFromJson(AJson: TJSONObject);
+    procedure LoadFromJson(AJson: TpsJsonObject);
     procedure LoadFromStrings(AStrings: TStrings);
     property Value[AName: string]: string read GetValue write SetValue; default;
   end;
@@ -302,7 +302,7 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
     procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property MetaData: IpsMetadata read GetMetaData;
     property id: string read GetId;
     property Amount: integer read GetAmount;
@@ -319,7 +319,7 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
     procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property ID: string read GetID;
     property ClientSecret: string read GetClientSecret;
     property PaymentMethod: string read GetPaymentMethod;
@@ -335,7 +335,7 @@ type
     function GetLast4: string;
     function GetBrand: string;
     function GetJson: string;
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: TpsJsonObject);
     property ID: string read GetID;
     property Customer: string read GetCustomer;
     property ExpiryMonth: integer read GetExpiryMonth;
@@ -413,7 +413,7 @@ type
     function GetStatus: string;
     function GetPaymentIntentID: string;
     function GetMetaData: IpsMetaData;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
     procedure LoadFromJson(AJson: string); overload;
     property Description: string read GetDescription;
     property ID: string read GetID;
@@ -443,7 +443,7 @@ type
     function GetMetaData: IpsMetaData;
     function GetName: string;
     procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property ID: string read GetID;
     property Name: string read GetName;
     property Description: string read GetDescription;
@@ -465,7 +465,7 @@ type
     function GetID: string;
     function GetPdfUrl: string;
     procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property ID: string read GetID;
     property PdfUrl: string read GetPdfUrl;
     property Json: string read GetJson;
@@ -515,7 +515,7 @@ type
     function GetSetupIntent(ASetupIntentID: string): IpsSetupIntent;
     function CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent; overload;
     function CreateSetupIntent(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; overload;
-    function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
+    //function AddCard(ACustID: string; ANum: string; AMonth, AYear, ACvc: integer): IpsSetupIntent; deprecated;
     function CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer; overload;
     function CreateCustomer(AParams: IpsCreateCustomerParams): IpsCustomer; overload;
     function Getcustomer(AID: string): IpsCustomer;

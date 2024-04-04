@@ -45,12 +45,12 @@ type
     function GetLast4: string;
     function GetJson: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
 implementation
 
-uses SysUtils, pasStripe.Constants, pasStripe.Params, System.JSON;
+uses SysUtils, pasStripe.Constants, pasStripe.ParamTypes;
 
 { TpsPaymentMethod }
 
@@ -95,9 +95,9 @@ begin
   Result := FLast4;
 end;
 
-procedure TpsPaymentMethod.LoadFromJson(AJson: TJsonObject);
+procedure TpsPaymentMethod.LoadFromJson(AJson: TpsJsonObject);
 var
-  ACard: TJsonObject;
+  ACard: TpsJsonObject;
 begin
   inherited;
   FID := AJson.S[id];

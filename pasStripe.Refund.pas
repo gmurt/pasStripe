@@ -24,7 +24,7 @@ unit pasStripe.Refund;
 
 interface
 
-uses pasStripe, pasStripe.Params;
+uses pasStripe, pasStripe.Params, pasStripe.ParamTypes;
 
 type
   TpsCreateRefundParams = class(TpsBaseParamsWithMetaData, IpsCreateRefundParams)

@@ -37,14 +37,14 @@ type
     function GetPdfUrl: string;
   protected
     procedure LoadFromJson(AJson: string); overload;
-    procedure LoadFromJson(AJson: TJsonObject); overload;
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
   end;
 
   TpsInvoiceList = class(TpsBaseList<IpsInvoice>, IpsInvoiceList);
 
 implementation
 
-uses pasStripe.Constants, pasStripe.Params, System.Json;
+uses pasStripe.Constants, pasStripe.Params, pasStripe.ParamTypes;
 
 { TpsInvoice }
 
@@ -65,18 +65,17 @@ end;
 
 procedure TpsInvoice.LoadFromJson(AJson: string);
 var
-  AObj: TJsonObject;
+  AObj: TpsJsonObject;
 begin
-  AObj := TJsonObject.Create;
+  AObj := TpsJsonObject.ParseJSONValue(AJson) as TpsJsonObject;
   try
-    AObj.FromJSON(AJson);
     LoadFromJson(AObj);
   finally
     AObj.Free;
   end;
 end;
 
-procedure TpsInvoice.LoadFromJson(AJson: TJsonObject);
+procedure TpsInvoice.LoadFromJson(AJson: TpsJsonObject);
 begin
   FJson := AJson.ToJSON;
   FID := AJson.S[id];

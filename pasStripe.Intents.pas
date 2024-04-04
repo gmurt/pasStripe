@@ -65,7 +65,7 @@ type
     function GetClientSecret: string;
     function GetPaymentMethod: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
   TpsSetupIntent = class(TpsBaseObjectWithMetadata, IpsSetupIntent)
@@ -78,12 +78,12 @@ type
     function GetPaymentMethod: string;
   protected
 
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
 implementation
 
-uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils;
+uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils, pasStripe.ParamTypes;
 
 { TpsPaymentIntent }
 
@@ -122,7 +122,7 @@ begin
   Result := FPaymentMethod;
 end;
 
-procedure TpsPaymentIntent.LoadFromJson(AJson: TJsonObject);
+procedure TpsPaymentIntent.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   Fid := AJson.S[id];
@@ -155,7 +155,7 @@ begin
   Result := FPaymentMethod;
 end;
 
-procedure TpsSetupIntent.LoadFromJson(AJson: TJsonObject);
+procedure TpsSetupIntent.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   FID := AJson.S[id];

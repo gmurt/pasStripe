@@ -47,7 +47,7 @@ type
   protected
     function FindMetaData(AName: string): IpsMetaDataRecord;
     function AddMetaData(AName, AValue: string): IpsMetaDataRecord;
-    procedure LoadFromJson(AJson: TJsonObject);
+    procedure LoadFromJson(AJson: TpsJsonObject);
     procedure LoadFromStrings(AStrings: TStrings);
     procedure Enumerate(ACallback: TProc<IpsMetaDataRecord>);
     procedure Clear;
@@ -125,18 +125,18 @@ begin
   end;
 end;
 
-procedure TpsMetaData.LoadFromJson(AJson: TJsonObject);
+procedure TpsMetaData.LoadFromJson(AJson: TpsJsonObject);
 var
   ICount: integer;
-  AMeta: TJSONPair;
 begin
   FList.Clear;
   if AJson = nil then
     Exit;
   for ICount := 0 to AJson.Count-1 do
   begin
-    AMeta := AJson.Pairs[ICount];
-    AddMetaData(AMeta.JsonString.Value, AMeta.JsonValue.Value);
+    //AMeta := AJson.Pairs[ICount];
+    AddMetaData(AJson.Pairs[ICount].JsonString.Value,
+                AJson.Pairs[ICount].JsonValue.Value);
   end;
 
 end;

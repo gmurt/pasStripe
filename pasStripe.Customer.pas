@@ -41,7 +41,7 @@ type
     function GetJson: string;
     function GetName: string;
   protected
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
   TpsCustomerParams = class(TpsBaseParamsWithMetaData, IpsCreateCustomerParams, IpsUpdateCustomerParams)
@@ -61,7 +61,7 @@ type
 
 implementation
 
-uses pasStripe.Constants;
+uses pasStripe.Constants, pasStripe.ParamTypes;
 
 { TpsCustomer }
 
@@ -90,7 +90,7 @@ begin
   Result := FName;
 end;
 
-procedure TpsCustomer.LoadFromJson(AJson: TJsonObject);
+procedure TpsCustomer.LoadFromJson(AJson: TpsJsonObject);
 begin
   FId := AJson.S[id];
   if not AJson.IsNull('name') then Fname := AJson.S[name];

@@ -102,14 +102,14 @@ type
     function GetStatus: string;
     function GetPaymentIntentID: string;
   public
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
   TpsChargeList = class(TpsBaseList<IpsCharge>, IpsChargeList);
 
 implementation
 
-uses SysUtils, DateUtils, pasStripe.Constants, System.Json, pasStripe.Utils;
+uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils, pasStripe.ParamTypes;
 
 { TpsChargeListOptions }
 
@@ -233,7 +233,7 @@ begin
   Result := FStatus;
 end;
 
-procedure TpsCharge.LoadFromJson(AJson: TJsonObject);
+procedure TpsCharge.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   FJson := AJson.ToJSON;

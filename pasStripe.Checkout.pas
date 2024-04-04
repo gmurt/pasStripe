@@ -124,13 +124,13 @@ type
     procedure SetUrl(const Value: string);
   protected
     procedure Clear; override;
-    procedure LoadFromJson(AJson: TJsonObject); override;
+    procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
 
 implementation
 
-uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils, System.JSON;
+uses SysUtils, DateUtils, pasStripe.Constants, pasStripe.Utils, pasStripe.ParamTypes;
 
 { TpsCreateCheckoutParams }
 
@@ -278,7 +278,7 @@ begin
 end;
 
 
-procedure TpsCheckoutSession.LoadFromJson(AJson: TJsonObject);
+procedure TpsCheckoutSession.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   FID := AJson.S[id];
