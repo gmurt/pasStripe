@@ -50,6 +50,7 @@ type
 
   TpsPaymentIntent = class(TpsBaseObjectWithMetadata, IpsPaymentIntent)
   private
+    FJson: string;
     Fid: string;
     FAmount: integer;
     FApplicationFee: integer;
@@ -57,6 +58,7 @@ type
     FCreated: TDateTime;
     FClientSecret: string;
     FPaymentMethod: string;
+    FStatus: string;
     function GetAmount: integer;
     function GetApplicationFee: integer;
     function GetCreated: TDateTime;
@@ -64,6 +66,8 @@ type
     function GetPaid: Boolean;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
+    function GetStatus: string;
+    function GetJson: string;
   protected
     procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
@@ -71,11 +75,13 @@ type
   TpsSetupIntent = class(TpsBaseObjectWithMetadata, IpsSetupIntent)
   private
     FID: string;
+    FStatus: string;
     FClientSecret: string;
     FPaymentMethod: string;
     function GetID: string;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
+    function GetStatus: string;
   protected
 
     procedure LoadFromJson(AJson: TpsJsonObject); override;
@@ -112,6 +118,11 @@ begin
   Result := Fid;
 end;
 
+function TpsPaymentIntent.GetJson: string;
+begin
+  Result := FJson;
+end;
+
 function TpsPaymentIntent.GetPaid: Boolean;
 begin
   Result := FPaid;
@@ -122,9 +133,15 @@ begin
   Result := FPaymentMethod;
 end;
 
+function TpsPaymentIntent.GetStatus: string;
+begin
+  Result := FStatus;
+end;
+
 procedure TpsPaymentIntent.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
+  FJson := AJson.ToJSON;
   Fid := AJson.S[id];
   FAmount := AJson.I[amount];
   if AJson.IsNull('application_fee_amount') = False then
@@ -133,6 +150,7 @@ begin
   FPaid := AJson.I[amount_received] >= AJson.I[amount];
   FCreated := UnixToDateTime(StrToInt(AJson.S[created]));
   FClientSecret := AJson.S[client_secret];
+  FStatus := AJson.S[status];
   if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S[payment_method];
   
 end;
@@ -155,10 +173,16 @@ begin
   Result := FPaymentMethod;
 end;
 
+function TpsSetupIntent.GetStatus: string;
+begin
+  Result := FStatus;
+end;
+
 procedure TpsSetupIntent.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   FID := AJson.S[id];
+  FStatus := AJson.S[status];
   if not AJson.IsNull('payment_method') then FPaymentMethod := AJson.S[payment_method];
   if not AJson.IsNull('client_secret') then FClientSecret := AJson.S[client_secret];
 end;

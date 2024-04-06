@@ -238,7 +238,7 @@ type
 
   IpsCreateCheckoutParams = interface(IpsBaseParamsWithMetaData)
     ['{942DADE1-A2C6-4C59-95C9-14AAB1F4FE76}']
-    function GetApplicationFeeAmount: integer;
+    //function GetApplicationFeeAmount: integer;
     function GetMode: TpsCheckoutMode;
     function GetCurrency: TpsCurrency;
     function GetCustomerEmail: string;
@@ -252,8 +252,8 @@ type
     procedure SetPaymentMethods(const Value: TpsPaymentMethodsTypes);
     procedure SetCancelUrl(const Value: string);
     procedure SetSuccessUrl(const Value: string);
-    procedure SetApplicationFeeAmount(const Value: integer);
-    property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
+  //  procedure SetApplicationFeeAmount(const Value: integer);
+   // property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
     property Mode: TpsCheckoutMode read GetMode write SetMode;
     property Currency: TpsCurrency read GetCurrency write SetCurrency;
     property CustomerEmail: string read GetCustomerEmail write SetCustomerEmail;
@@ -301,6 +301,9 @@ type
     function GetMetaData: IpsMetadata;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
+    function GetStatus: string;
+    function GetJson: string;
+
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property MetaData: IpsMetadata read GetMetaData;
@@ -311,6 +314,8 @@ type
     property Created: TDateTime read GetCreated;
     property ClientSecret: string read GetClientSecret;
     property PaymentMethod: string read GetPaymentMethod;
+    property Status: string read GetStatus;
+    property Json: string read GetJson;
   end;
 
   IpsSetupIntent = interface(IpsBaseObjectWithMetaData)
@@ -318,11 +323,13 @@ type
     function GetID: string;
     function GetClientSecret: string;
     function GetPaymentMethod: string;
+    function GetStatus: string;
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property ID: string read GetID;
     property ClientSecret: string read GetClientSecret;
     property PaymentMethod: string read GetPaymentMethod;
+    property Status: string read GetStatus;
   end;
 
   IpsPaymentMethod = interface(IpsBaseObjectWithMetaData)

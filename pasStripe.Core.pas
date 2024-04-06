@@ -310,8 +310,8 @@ begin
       Result := AResult;
 
     end
-    else
-      raise Exception.Create(FLastError);
+    //else
+    //  raise Exception.Create(FLastError);
   finally
     AJson.Free;
   end;
@@ -514,8 +514,12 @@ function TPasStripe.TestCredentials: Boolean;
 var
   AAccount: IpsAccount;
 begin
-   AAccount := GetAccount;
-   Result := AAccount.ID <> '';
+  try
+    AAccount := GetAccount;
+    Result := AAccount.ID <> '';
+  except
+    Result := False;
+  end;
 end;
 
 function TPasStripe.UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
