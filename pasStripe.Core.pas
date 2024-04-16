@@ -44,6 +44,7 @@ type
     function Post(AMethod: string; AUrlParams: TStrings): string; overload;
     function Post(AMethod: string; AParams: IpsBaseParams): string; overload;
   protected
+    function GetBillingPortalUrl(ACustID, AReturnURL: string): string;
     function GetAccount: IpsAccount;
     function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount; overload;
     function CreateAccount(AParams: IpsCreateAccountParams): IpsAccount; overload;
@@ -81,10 +82,14 @@ type
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
     function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
-    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
+
+    function GetCharges(const APaymentIntentID: string): IpsChargeList; overload;
+    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList; overload;
+
+    function GetPayouts(const AOptions: IpsPayoutListOptions): IpsPayoutList;
 
     function GetInvoice(AID: string): IpsInvoice;
-
+    function GetInvoices(AOptions: IpsInvoiceListOptions): IpsInvoiceList;
 
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
     function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
@@ -92,6 +97,7 @@ type
     function ExpireSession(ASessionID: string): IpsCheckoutSession;
 
     function GenerateCheckoutSession(AParams: IpsCreateCheckoutParams): IpsCheckoutSession;
+    function GetCheckoutSessions: IpsCheckoutSessionList;
 
     function DeleteAccount(AAccount: string): Boolean;
     function GetData(AResource: string; const AParams: TStrings = nil): string;
@@ -343,6 +349,64 @@ begin
 end;
 
 
+function TPasStripe.GetInvoices(AOptions: IpsInvoiceListOptions): IpsInvoiceList;
+var
+  AJson: TpsJsonObject;
+  AData: string;
+  AObj: TpsJsonObject;
+  AInvoice: IpsInvoice;
+  AStartAfter: string;
+  AParams: TStrings;
+  ICount: integer;
+  ALimit: integer;
+  AHasMore: Boolean;
+begin
+  Result := TpsFactory.InvoiceList;
+  AStartAfter := '';
+  AParams := TStringList.Create;
+  try
+    ALimit := C_DEFAULT_LIMIT;
+
+    if AOptions <> nil then
+    begin
+      if AOptions.Limit <> -1 then ALimit := AOptions.Limit;
+      if AOptions.FromDate > 0 then AParams.Values['created[gte]'] := DateTimetoUnix(AOptions.FromDate).ToString;
+      if AOptions.ToDate > 0 then AParams.Values['created[lte]'] := DateTimetoUnix(AOptions.ToDate).ToString;
+      if AOptions.Customer <> '' then AParams.Values['customer'] := AOptions.Customer;
+     end;
+
+    AParams.Values['limit'] := ALimit.ToString;
+
+    repeat
+      if AParams.Values['query'] <> '' then
+        AData := Get('invoices/search', AParams)
+      else
+        AData := Get('invoices', AParams);
+
+      AJson := TpsJsonObject.ParseJSONValue(AData) as TpsJsonObject;
+      try
+        for ICount := 0 to AJson.A['data'].Count - 1 do
+        begin
+          AObj := AJson.A['data'].Items[ICount] as TpsJSONObject;
+          AInvoice := TpsFactory.Invoice;
+          AInvoice.LoadFromJson(AObj.ToJSON);
+          Result.Add(AInvoice);
+        end;
+        if AInvoice <> nil then
+          AParams.Values['starting_after'] := AInvoice.id;
+
+        AHasMore := AJson.B[has_more];
+      finally
+        AJson.Free;
+      end;
+
+    until (AHasMore = False) or (Result.Count >= ALimit);
+
+  finally
+    AParams.Free;
+  end;
+end;
+
 function TPasStripe.GetLastError: string;
 begin
   Result := FLastError;
@@ -382,6 +446,20 @@ end;
 function TPasStripe.GetAccountID: string;
 begin
   Result := FAccount;
+end;
+
+function TPasStripe.GetBillingPortalUrl(ACustID, AReturnURL: string): string;
+var
+  AParams: TStrings;
+begin
+  AParams := TStringList.Create;
+  try
+    AParams.Values['customer'] := ACustID;
+    AParams.Values['return_url'] := AReturnURL;
+    Result := Post('billing_portal/sessions', AParams);
+  finally
+    AParams.Free;
+  end;
 end;
 
 function TPasStripe.CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount;
@@ -584,6 +662,35 @@ begin
   end;
 end;
 
+function TPasStripe.GetCharges(const APaymentIntentID: string): IpsChargeList;
+var
+  AParams: TStrings;
+  AData: string;
+  AJson: TJSONObject;
+  AObj: TJsonValue;
+  ACharge: IpsCharge;
+begin
+  Result := TpsFactory.ChargeList;
+  AParams := TStringList.Create;
+  try
+    AParams.Values[C_PAYMENT_INTENT] := APaymentIntentID;
+    AData := Get('charges', AParams);
+    AJson := TJSONObject.ParseJSONValue(AData) as TJSONObject;
+    try
+      for AObj in AJson.A['data'] do
+      begin
+        ACharge := TpsFactory.Charge;
+        ACharge.LoadFromJson(AObj as TJSONObject);
+        Result.Add(ACharge);
+      end;
+    finally
+      AJson.Free;
+    end;
+  finally
+    AParams.Free;
+  end;
+end;
+
 function TPasStripe.GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
 var
   AJson: TpsJsonObject;
@@ -594,6 +701,7 @@ var
   AParams: TStrings;
   ICount: integer;
   ALimit: integer;
+  AHasMore: Boolean;
 begin
   Result := TpsFactory.ChargeList;
   AStartAfter := '';
@@ -618,6 +726,7 @@ begin
       if AParams.Values['query'] <> '' then
         AData := Get('charges/search', AParams)
       else
+
         AData := Get('charges', AParams);
 
       AJson := TpsJsonObject.ParseJSONValue(AData) as TpsJsonObject;
@@ -631,11 +740,13 @@ begin
         end;
         if ACharge <> nil then
           AParams.Values['starting_after'] := ACharge.id;
+
+        AHasMore := AJson.B[has_more];
       finally
         AJson.Free;
       end;
 
-    until (AJson.B[has_more] = False) or (Result.Count >= ALimit);
+    until (AHasMore = False) or (Result.Count >= ALimit);
 
   finally
     AParams.Free;
@@ -648,7 +759,38 @@ var
 begin
   Result := TpsFactory.CheckoutSession;
   AData := Get('checkout/sessions/' + ASessionID, nil);
-  Result.LoadFromJson(AData);
+  if AData <> '' then
+    Result.LoadFromJson(AData);
+end;
+
+function TPasStripe.GetCheckoutSessions: IpsCheckoutSessionList;
+var
+  AData: string;
+  AJson: TJSONObject;
+  AObj: TJsonValue;
+  ASession: IpsCheckoutSession;
+  AParams: TStrings;
+begin
+  Result := TpsFactory.CheckoutSessionList;
+  AParams := TStringList.Create;
+  try
+    AParams.Values['limit'] := '100';
+    AData := Get('checkout/sessions', AParams);
+
+    AJson := TJSONObject.ParseJSONValue(AData) as TJSONObject;
+    try
+      for AObj in AJson.A['data'] do
+      begin
+        ASession := TpsFactory.CheckoutSession;
+        ASession.LoadFromJson(AObj as TJSONObject);
+        Result.Add(ASession);
+      end;
+    finally
+      AJson.Free;
+    end;
+  finally
+    AParams.Free;
+  end;
 end;
 
 function TPasStripe.CreateCustomer(AName, AEmail, ADescription: string; AMeta: TStrings): IpsCustomer;
@@ -696,11 +838,14 @@ var
 begin
   Result := TpsFactory.PaymentIntent;
   AData := Get(C_PAYMENT_INTENTS + '/' + AID, nil);
-  AJson := TpsJsonObject.ParseJSONValue(AData) as TpsJsonObject;
-  try
-    Result.LoadFromJson(AJson);
-  finally
-    AJson.Free;
+  if AData <> '' then
+  begin
+    AJson := TpsJsonObject.ParseJSONValue(AData) as TpsJsonObject;
+    try
+      Result.LoadFromJson(AJson);
+    finally
+      AJson.Free;
+    end;
   end;
 end;
 
@@ -724,6 +869,66 @@ end;
 function TPasStripe.GetPaymentMethods(ACustID: string): string;
 begin
   Result := Get(C_CUSTOMERS + '/' + ACustID+'/payment_methods', nil);
+end;
+
+function TPasStripe.GetPayouts(const AOptions: IpsPayoutListOptions): IpsPayoutList;
+var
+  AJson: TpsJsonObject;
+  AData: string;
+  AObj: TpsJsonObject;
+  APayout: IpsPayout;
+  AStartAfter: string;
+  AParams: TStrings;
+  ICount: integer;
+  ALimit: integer;
+  AHasMore: Boolean;
+begin
+  Result := TpsFactory.PayoutList;
+  AStartAfter := '';
+  AParams := TStringList.Create;
+  try
+    ALimit := C_DEFAULT_LIMIT;
+
+    if AOptions <> nil then
+    begin
+      if AOptions.Limit <> -1 then ALimit := AOptions.Limit;
+      if AOptions.FromDate > 0 then AParams.Values['created[gte]'] := DateTimetoUnix(AOptions.FromDate).ToString;
+      if AOptions.ToDate > 0 then AParams.Values['created[lte]'] := DateTimetoUnix(AOptions.ToDate).ToString;
+     end;
+
+    AParams.Values['limit'] := ALimit.ToString;
+
+    //AParams.Values['expand[]'] := 'data.customer';
+
+    repeat
+      if AParams.Values['query'] <> '' then
+        AData := Get('payouts/search', AParams)
+      else
+
+        AData := Get('payouts', AParams);
+
+      AJson := TpsJsonObject.ParseJSONValue(AData) as TpsJsonObject;
+      try
+        for ICount := 0 to AJson.A['data'].Count - 1 do
+        begin
+          AObj := AJson.A['data'].Items[ICount] as TpsJSONObject;
+          APayout := TpsFactory.Payout;
+          APayout.LoadFromJson(AObj.ToJSON);
+          Result.Add(APayout);
+        end;
+        if APayout <> nil then
+          AParams.Values['starting_after'] := APayout.id;
+
+        AHasMore := AJson.B[has_more];
+      finally
+        AJson.Free;
+      end;
+
+    until (AHasMore = False) or (Result.Count >= ALimit);
+
+  finally
+    AParams.Free;
+  end;
 end;
 
 function TPasStripe.CreateSetupIntent(const ACustID: string = ''): IpsSetupIntent;

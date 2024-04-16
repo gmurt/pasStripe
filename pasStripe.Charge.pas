@@ -101,6 +101,7 @@ type
     function GetRefunded: integer;
     function GetStatus: string;
     function GetPaymentIntentID: string;
+    function GetSucceeded: Boolean;
   public
     procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
@@ -231,6 +232,11 @@ end;
 function TpsCharge.GetStatus: string;
 begin
   Result := FStatus;
+end;
+
+function TpsCharge.GetSucceeded: Boolean;
+begin
+  Result := FStatus.ToLower = 'succeeded';
 end;
 
 procedure TpsCharge.LoadFromJson(AJson: TpsJsonObject);

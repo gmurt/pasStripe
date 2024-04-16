@@ -50,9 +50,11 @@ type
     FParams: TStrings;
   protected
     function GetInteger(AParam: TpsParamName): integer;
-    function GetString(AParam: TpsParamName): string;
+    function GetString(AParam: TpsParamName): string; overload;
+    function GetString(AParam: string): string; overload;
     function GetBoolean(AParam: TpsParamName): Boolean;
-    procedure SetString(AParam: TpsParamName; const AValue: string);
+    procedure SetString(AParam: TpsParamName; const AValue: string); overload;
+    procedure SetString(AParam: string; AValue: string); overload;
     procedure SetInteger(AParam: TpsParamName; const AValue: integer);
     procedure SetBoolean(AParam: TpsParamName; const AValue: Boolean);
     function GetAsString: string;
@@ -161,6 +163,11 @@ begin
   Result := '';
 end;
 
+function TpsBaseParams.GetString(AParam: string): string;
+begin
+  Result := FParams.Values[AParam];
+end;
+
 function TpsBaseParams.GetString(AParam: TpsParamName): string;
 begin
   Result := FParams.Values[TRttiEnumerationType.GetName(AParam)];
@@ -220,6 +227,11 @@ end;
 procedure TpsBaseParams.SetInteger(AParam: TpsParamName; const AValue: integer);
 begin
   SetString(AParam, IntToStr(AValue));
+end;
+
+procedure TpsBaseParams.SetString(AParam, AValue: string);
+begin
+  FParams.Values[AParam] := AValue;
 end;
 
 procedure TpsBaseParams.SetString(AParam: TpsParamName; const AValue: string);

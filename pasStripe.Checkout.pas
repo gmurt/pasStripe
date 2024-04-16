@@ -74,6 +74,7 @@ type
   private
     FPaymentMethodTypes: TpsPaymentMethodsTypes;
     FLineItems: IpsCheckoutLineItems;
+    FDescription: string;
     function GetApplicationFeeAmount: integer;
     function GetMode: TpsCheckoutMode;
     function GetCurrency: TpsCurrency;
@@ -82,6 +83,7 @@ type
     function GetCancelUrl: string;
     function GetSuccessUrl: string;
     function GetLineItems: IpsCheckoutLineItems;
+    function GetDescription: string; // payment only
     procedure SetMode(const Value: TpsCheckoutMode);
     procedure SetCurrency(const Value: TpsCurrency);
     procedure SetCustomerEmail(const Value: string);
@@ -89,6 +91,7 @@ type
     procedure SetCancelUrl(const Value: string);
     procedure SetSuccessUrl(const Value: string);
     procedure SetApplicationFeeAmount(const Value: integer);
+    procedure SetDescription(const Value: string);
   public
     constructor Create(AParent: TpsBaseParams); override;
     procedure PopulateStrings(AStrings: TStrings); override;
@@ -114,6 +117,7 @@ type
     function GetPaymentStatus: string;
     function GetStatus: string;
     function GetUrl: string;
+    function GetIsComplete: Boolean;
 
     procedure SetID(const Value: string);
     procedure SetPaymentIntentID(const Value: string);
@@ -127,6 +131,7 @@ type
     procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
 
+  TpsCheckoutSessionList = class(TpsBaseList<IpsCheckoutSession>, IpsCheckoutSessionList);
 
 implementation
 
@@ -152,7 +157,8 @@ end;
 
 function TpsCreateCheckoutParams.GetApplicationFeeAmount: integer;
 begin
-  Result := GetInteger(application_fee_amount);
+  Result := StrToIntDef(GetString('payment_intent_data[application_fee_amount]'), 0);
+
 end;
 
 function TpsCreateCheckoutParams.GetCancelUrl: string;
@@ -169,6 +175,17 @@ procedure TpsCreateCheckoutParams.PopulateStrings(AStrings: TStrings);
 begin
   inherited;
   FLineItems.PopulateStrings(AStrings);
+  if GetMode = TpsCheckoutMode.cmPayment then
+  begin
+    if FDescription <> '' then
+      AStrings.Values['payment_intent_data[description]'] := FDescription;
+    MetaData.Enumerate(
+      procedure(AMeta: IpsMetaDataRecord)
+      begin
+        AStrings.Values['payment_intent_data[metadata['+AMeta.Name+']]'] := AMeta.Value
+      end
+    );
+  end;
 end;
 
 function TpsCreateCheckoutParams.GetCurrency: TpsCurrency;
@@ -179,6 +196,11 @@ end;
 function TpsCreateCheckoutParams.GetCustomerEmail: string;
 begin
   Result := GetString(customer_email)
+end;
+
+function TpsCreateCheckoutParams.GetDescription: string;
+begin
+  Result := FDescription;
 end;
 
 function TpsCreateCheckoutParams.GetLineItems: IpsCheckoutLineItems;
@@ -199,7 +221,7 @@ end;
 
 procedure TpsCreateCheckoutParams.SetApplicationFeeAmount(const Value: integer);
 begin
-  SetInteger(application_fee_amount, Value);
+  SetString('payment_intent_data[application_fee_amount]', Value.ToString);
 end;
 
 procedure TpsCreateCheckoutParams.SetCancelUrl(const Value: string);
@@ -220,6 +242,11 @@ end;
 procedure TpsCreateCheckoutParams.SetCustomerEmail(const Value: string);
 begin
   SetString(customer_email, Value);
+end;
+
+procedure TpsCreateCheckoutParams.SetDescription(const Value: string);
+begin
+  FDescription := Value;
 end;
 
 function TpsCheckoutSession.GetUrl: string;
@@ -250,6 +277,11 @@ end;
 function TpsCheckoutSession.GetID: string;
 begin
   Result := FID;
+end;
+
+function TpsCheckoutSession.GetIsComplete: Boolean;
+begin
+  Result := GetStatus.ToLower = 'complete';
 end;
 
 function TpsCheckoutSession.GetPaymentIntentID: string;

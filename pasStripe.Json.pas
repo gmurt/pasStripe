@@ -74,19 +74,6 @@ function TJsonHelper.Contains(AName: string): Boolean;
 begin
   Result := FindValue(AName) <> nil;
 end;
-                      {
-procedure TJsonHelper.FromJSON(AJson: string);
-var
-  AObj: TpsJsonObject;
-begin
-  AObj := TpsJsonObject.ParseJSONValue(AJson) as TpsJsonObject;
-  try
-    Assign(AObj);
-    //Parse(BytesOf(AJson), 0);
-  finally
-    AObj.Free;
-  end;
-end;  }
 
 function TJsonHelper.GetArray(AName: string): TJSONArray;
 begin
@@ -106,8 +93,6 @@ begin
   AValue := FindValue(ParamToString(AParam));
   if AValue <> nil then
     Result := AValue.AsType<Boolean> = True;
-
-
 end;
 
 function TJsonHelper.GetInteger(AParam: TpsParamName): integer;

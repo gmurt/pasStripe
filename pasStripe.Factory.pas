@@ -36,11 +36,19 @@ type
     function Charge: IpsCharge;
     function ChargeList: IpsChargeList;
     function ChargeListOptions: IpsChargeListOptions;
+
+    function Payout: IpsPayout;
+    function PayoutList: IpsPayoutList;
+    function PayoutListOptions: IpsPayoutListOptions;
+
     function Invoice: IpsInvoice;
     function InvoiceList: IpsInvoiceList;
+    function InvoiceListOptions: IpsInvoiceListOptions;
+
     function PaymentIntent: IpsPaymentIntent;
     function SetupIntent: IpsSetupIntent;
     function CheckoutSession: IpsCheckoutSession;
+    function CheckoutSessionList: IpsCheckoutSessionList;
 
     // params
     function CreateAccountParams: IpsCreateAccountParams;
@@ -66,6 +74,8 @@ uses
   pasStripe.PaymentMethod,
   pasStripe.Customer,
   pasStripe.Charge,
+  pasStripe.Payout,
+
   pasStripe.Intents,
   pasStripe.Checkout,
   pasStripe.Invoice,
@@ -93,6 +103,22 @@ end;
 function TpsFactory.ChargeListOptions: IpsChargeListOptions;
 begin
   Result := TpsChargeListOptions.Create;
+end;
+
+
+function TpsFactory.Payout: IpsPayout;
+begin
+  Result := TpsPayout.Create;
+end;
+
+function TpsFactory.PayoutList: IpsPayoutList;
+begin
+  Result := TpsPayoutList.Create;
+end;
+
+function TpsFactory.PayoutListOptions: IpsPayoutListOptions;
+begin
+  Result := TpsPayoutListOptions.Create;
 end;
 
 function TpsFactory.CreateAccountParams: IpsCreateAccountParams;
@@ -137,6 +163,11 @@ begin
   Result := TpsCheckoutSession.Create;
 end;
 
+function TpsFactory.CheckoutSessionList: IpsCheckoutSessionList;
+begin
+    Result := TpsCheckoutSessionList.Create;
+end;
+
 function TpsFactory.Customer: IpsCustomer;
 begin
   Result := TpsCustomer.Create;
@@ -150,6 +181,11 @@ end;
 function TpsFactory.InvoiceList: IpsInvoiceList;
 begin
   Result := TpsInvoiceList.Create;
+end;
+
+function TpsFactory.InvoiceListOptions: IpsInvoiceListOptions;
+begin
+  Result := TpsInvoiceListOptions.Create;
 end;
 
 function TpsFactory.PasStripe(ASecretKey: string; const AAccount: string = ''): IPasStripe;
@@ -166,6 +202,7 @@ function TpsFactory.PaymentMethod: IpsPaymentMethod;
 begin
   Result := TpsPaymentMethod.Create;
 end;
+
 
 function TpsFactory.SetupIntent: IpsSetupIntent;
 begin

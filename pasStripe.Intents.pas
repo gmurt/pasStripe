@@ -53,6 +53,7 @@ type
     FJson: string;
     Fid: string;
     FAmount: integer;
+    FCurrency: TpsCurrency;
     FApplicationFee: integer;
     FPaid: Boolean;
     FCreated: TDateTime;
@@ -68,6 +69,9 @@ type
     function GetPaymentMethod: string;
     function GetStatus: string;
     function GetJson: string;
+    function GetIsCancelled: Boolean;
+    function GetSucceeded: Boolean;
+    function GetCurrency: TpsCurrency;
   protected
     procedure LoadFromJson(AJson: TpsJsonObject); override;
   end;
@@ -113,9 +117,19 @@ begin
   Result := FCreated;
 end;
 
+function TpsPaymentIntent.GetCurrency: TpsCurrency;
+begin
+  Result := FCurrency;
+end;
+
 function TpsPaymentIntent.GetId: string;
 begin
   Result := Fid;
+end;
+
+function TpsPaymentIntent.GetIsCancelled: Boolean;
+begin
+  Result := FStatus.ToLower = 'canceled';  // US spelling with 1 "l"
 end;
 
 function TpsPaymentIntent.GetJson: string;
@@ -138,12 +152,18 @@ begin
   Result := FStatus;
 end;
 
+function TpsPaymentIntent.GetSucceeded: Boolean;
+begin
+  Result := FStatus.ToLower = 'succeeded';
+end;
+
 procedure TpsPaymentIntent.LoadFromJson(AJson: TpsJsonObject);
 begin
   inherited;
   FJson := AJson.ToJSON;
   Fid := AJson.S[id];
   FAmount := AJson.I[amount];
+  FCurrency := StringToCurrency(AJson.S[currency]);
   if AJson.IsNull('application_fee_amount') = False then
     FApplicationFee := AJson.I[application_fee_amount];
 

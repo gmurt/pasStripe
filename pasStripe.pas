@@ -238,7 +238,7 @@ type
 
   IpsCreateCheckoutParams = interface(IpsBaseParamsWithMetaData)
     ['{942DADE1-A2C6-4C59-95C9-14AAB1F4FE76}']
-    //function GetApplicationFeeAmount: integer;
+    function GetApplicationFeeAmount: integer;
     function GetMode: TpsCheckoutMode;
     function GetCurrency: TpsCurrency;
     function GetCustomerEmail: string;
@@ -246,20 +246,23 @@ type
     function GetCancelUrl: string;
     function GetSuccessUrl: string;
     function GetLineItems: IpsCheckoutLineItems;
+    function GetDescription: string; // payment only
     procedure SetMode(const Value: TpsCheckoutMode);
     procedure SetCurrency(const Value: TpsCurrency);
     procedure SetCustomerEmail(const Value: string);
     procedure SetPaymentMethods(const Value: TpsPaymentMethodsTypes);
     procedure SetCancelUrl(const Value: string);
     procedure SetSuccessUrl(const Value: string);
-  //  procedure SetApplicationFeeAmount(const Value: integer);
-   // property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
+    procedure SetDescription(const Value: string);
+    procedure SetApplicationFeeAmount(const Value: integer);
+    property ApplicationFeeAmount: integer read GetApplicationFeeAmount write SetApplicationFeeAmount;
     property Mode: TpsCheckoutMode read GetMode write SetMode;
     property Currency: TpsCurrency read GetCurrency write SetCurrency;
     property CustomerEmail: string read GetCustomerEmail write SetCustomerEmail;
     property PaymentMethods: TpsPaymentMethodsTypes read GetPaymentMethods write SetPaymentMethods;
     property CancelUrl: string read GetCancelUrl write SetCancelUrl;
     property SuccessUrl: string read GetSuccessUrl write SetSuccessUrl;
+    property Description: string read GetDescription write SetDescription;
     property LineItems: IpsCheckoutLineItems read GetLineItems;
   end;
 
@@ -303,6 +306,9 @@ type
     function GetPaymentMethod: string;
     function GetStatus: string;
     function GetJson: string;
+    function GetCurrency: TpsCurrency;
+    function GetIsCancelled: Boolean;
+    function GetSucceeded: Boolean;
 
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TpsJsonObject); overload;
@@ -313,8 +319,11 @@ type
     property ApplicationFeeAmount: integer read GetApplicationFee;
     property Created: TDateTime read GetCreated;
     property ClientSecret: string read GetClientSecret;
+    property Currency: TpsCurrency read Getcurrency;
     property PaymentMethod: string read GetPaymentMethod;
     property Status: string read GetStatus;
+    property IsCancelled: Boolean read GetIsCancelled;
+    property Succeeded: Boolean read GetSucceeded;
     property Json: string read GetJson;
   end;
 
@@ -364,6 +373,8 @@ type
     function GetStatus: string;
     function GetUrl: string;
     function GetMetadata: IpsMetadata;
+    function GetIsComplete: Boolean;
+
     procedure SetID(const Value: string);
     procedure SetPaymentIntentID(const Value: string);
     procedure SetSetupIntentID(const Value: string);
@@ -382,9 +393,16 @@ type
     property PaymentStatus: string read GetPaymentStatus write SetPaymentStatus;
     property Metadata: IpsMetadata read GetMetadata;
     property Json: string read GetJson write SetJson;
-    procedure LoadFromJson(AData: string);
+    procedure LoadFromJson(AJson: TpsJsonObject); overload;
+    procedure LoadFromJson(AData: string); overload;
     property Url: string read GetUrl;
+    property IsComplete: Boolean read GetIsComplete;
   end;
+
+  IpsCheckoutSessionList = interface(IpsBaseList<IpsCheckoutSession>)
+    ['{DA38B1BB-9EF6-4458-A96C-FECF884B8297}']
+  end;
+
 
   IpsChargeListOptions = interface
     ['{63EA59D8-289A-4C8D-BF1F-5D6AD738D005}']
@@ -420,6 +438,7 @@ type
     function GetStatus: string;
     function GetPaymentIntentID: string;
     function GetMetaData: IpsMetaData;
+    function GetSucceeded: Boolean;
     procedure LoadFromJson(AJson: TpsJsonObject); overload;
     procedure LoadFromJson(AJson: string); overload;
     property Description: string read GetDescription;
@@ -435,11 +454,47 @@ type
     property CardBrand: string read GetCardBrand;
     property Refunded: integer read GetRefunded;
     property MetaData: IpsMetaData read GetMetaData;
+    property Succeeded: Boolean read GetSucceeded;
   end;
 
   IpsChargeList = interface(IpsBaseList<IpsCharge>)
     ['{CAED85A6-F41D-482F-9928-70F2ABE8431F}']
   end;
+
+  IpsPayout = interface(IpsBaseObjectWithMetaData)
+    ['{5C1B8033-E51D-4AD9-BE89-814EFF9881AF}']
+    function GetID: string;
+    function GetAmount: integer;
+    function GetCurrency: string;
+    function GetDescription: string;
+    function GetStatus: string;
+    function GetArriveBy: TDateTime;
+    property ID: string read GetID;
+    property Amount: integer read GetAmount;
+    property Currency: string read GetCurrency;
+    property Status: string read GetStatus;
+    property Description: string read GetDescription;
+    property ArriveBy: TDateTime read GetArriveBy;
+  end;
+
+  IpsPayoutList = interface(IpsBaseList<IpsPayout>)
+    ['{CAED85A6-F41D-482F-9928-70F2ABE8431F}']
+  end;
+
+  IpsPayoutListOptions = interface
+    ['{8E84E2B3-224B-4179-B43B-3C862F72234F}']
+    function GetFromDate: TDateTime;
+    function GetToDate: TDateTime;
+    function GetLimit: integer;
+    procedure SetFromDate(const Value: TDateTime);
+    procedure SetLimit(const Value: integer);
+    procedure SetToDate(const Value: TDateTime);
+    property FromDate: TDateTime read GetFromDate write SetFromDate;
+    property ToDate: TDateTime read GetToDate write SetToDate;
+    property Limit: integer read GetLimit write SetLimit;
+
+  end;
+
 
   IpsCustomer = interface
     ['{8687A786-45D8-4797-80D2-E260345A6FB0}']
@@ -462,7 +517,18 @@ type
   IpsInvoiceListOptions = interface
     ['{A0985C12-6DAC-4831-80A0-CEE8AB45B89F}']
     function GetCustomer: string;
+    function GetFromDate: TDateTime;
+    function GetToDate: TDateTime;
+    function GetLimit: integer;
+    procedure SetFromDate(const Value: TDateTime);
+    procedure SetLimit(const Value: integer);
+    procedure SetToDate(const Value: TDateTime);
     procedure SetCustomer(const Value: string);
+
+    property FromDate: TDateTime read GetFromDate write SetFromDate;
+    property ToDate: TDateTime read GetToDate write SetToDate;
+    property Limit: integer read GetLimit write SetLimit;
+
     property Customer: string read GetCustomer write SetCustomer;
   end;
 
@@ -470,12 +536,23 @@ type
     ['{1F6A3A85-DE3C-41EF-8426-10F898129867}']
     function GetJson: string;
     function GetID: string;
+    function GetTotal: integer;
     function GetPdfUrl: string;
+    function GetStatus: string;
+    function GetCreated: TDateTime;
+    function GetCurrency: string;
+    function GetNumber: string;
+
     procedure LoadFromJson(AJson: string); overload;
     procedure LoadFromJson(AJson: TpsJsonObject); overload;
     property ID: string read GetID;
     property PdfUrl: string read GetPdfUrl;
     property Json: string read GetJson;
+    property Created: TDateTime read GetCreated;
+    property Number: string read GetNumber;
+    property Status: string read GetStatus;
+    property Total: integer read GetTotal;
+    property Currency: string read GetCurrency;
   end;
 
   IpsInvoiceList = interface(IpsBaseList<IpsInvoice>)
@@ -503,15 +580,20 @@ type
     function CreateAccount(AName, AEmail: string; AMetaData: TStrings): IpsAccount; overload;
     function CreateAccount(AParams: IpsCreateAccountParams): IpsAccount; overload;
 
+    function GetBillingPortalUrl(ACustomerID, AReturnURL: string): string;
+
     function UpdateAccount(AId: string; Params: IpsUpdateAccountParams): IpsAccount;
 
     function TestCredentials: Boolean;
     function GetLastError: string;
     function GetCharge(AChargeID: string; const AExpandCustomer: Boolean = False): IpsCharge;
-    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList;
+    function GetCharges(const APaymentIntentID: string): IpsChargeList; overload;
+    function GetCharges(const AOptions: IpsChargeListOptions = nil): IpsChargeList; overload;
     function CreateCharge(AChargeParams: IpsCreateChargeParams): IpsCharge;
     function UpdateCharge(AChargeID: string; AChargeParams: IpsUpdateChargeParams): IpsCharge;
     function RefundCharge(AChargeID, AReason: string; AAmount: integer): Boolean;
+
+    function GetPayouts(const AOptions: IpsPayoutListOptions): IpsPayoutList;
 
     function CreatePaymentIntent(AAmountPence: integer; ADesc, ACurrency: string; AMetaData: TStrings; AApplicationFee: integer): IpsPaymentIntent; overload;
     function CreatePaymentIntent(AParams: IpsCreatePaymentIntentParams): IpsPaymentIntent; overload;
@@ -532,9 +614,14 @@ type
     function AttachPaymentMethodToCustomer(ACustID, APaymentMethodID: string): string;
     function GetPaymentMethods(ACustID: string): string;
     function GetCheckoutSession(ASessionID: string): IpsCheckoutSession;
+
+    function GetCheckoutSessions: IpsCheckoutSessionList;
+
     function GenerateCheckoutSession(AParams: IpsCreateCheckoutParams): IpsCheckoutSession;
     function GetLoginLink(AAccount: string): string;
     function GetInvoice(AID: string): IpsInvoice;
+    function GetInvoices(AOptions: IpsInvoiceListOptions): IpsInvoiceList;
+
     property AccountID: string read GetAccountID;
     property LastError: string read GetLastError;
   end;
@@ -548,11 +635,19 @@ type
     function Charge: IpsCharge;
     function ChargeList: IpsChargeList;
     function ChargeListOptions: IpsChargeListOptions;
+
+    function Payout: IpsPayout;
+    function PayoutList: IpsPayoutList;
+    function PayoutListOptions: IpsPayoutListOptions;
+
     function Invoice: IpsInvoice;
     function InvoiceList: IpsInvoiceList;
+    function InvoiceListOptions: IpsInvoiceListOptions;
+
     function PaymentIntent: IpsPaymentIntent;
     function SetupIntent: IpsSetupIntent;
     function CheckoutSession: IpsCheckoutSession;
+    function CheckoutSessionList: IpsCheckoutSessionList;
 
     function CreateAccountParams: IpsCreateAccountParams;
     function CreateChargeParams(AAmount: integer; ACurrency: TpsCurrency): IpsCreateChargeParams;
