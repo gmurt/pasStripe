@@ -50,7 +50,7 @@ begin
 end;
 ```
 
-### Load an ivoice and show the URL...
+### Load an invoice and show the URL...
 ```
 
 procedure TForm1.btnGetInvoiceUrl(Sender: TObject);
